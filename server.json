@@ -1,0 +1,12 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.pochtmanr/argus",
+  "title": "Argus",
+  "description": "Drive Argus anti-detect browser profiles as agent tools — each profile an isolated browser identity with its own fingerprint, proxy and cookie jar.",
+  "websiteUrl": "https://www.browserargus.com/integrations",
+  "repository": {
+    "url": "https://github.com/pochtmanr/argus-mcp",
+    "source": "github"
+  },
+  "version": "1.0.72"
+}

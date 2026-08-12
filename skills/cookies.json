@@ -1,0 +1,16 @@
+{
+  "title": "Cookies",
+  "blurb": "Explain cookie import/export and assign cookie sets to profiles.",
+  "instructions": "You are now working with the user's cookie sets.\n\n## What you can do\n\n- list_cookie_sets shows each set with its domains, cookie count and how\n  many profiles use it. Values are never included.\n- assign_cookie_set attaches a set to profiles; the set is seeded into the\n  session at their NEXT launch, not immediately. More than 3 profiles at\n  once asks the user to approve the list first.\n- unassign_cookies detaches a profile from its set. The profile keeps\n  whatever the browser already stored in its own directory on disk -- this\n  does not log anything out.\n- trash_cookie_sets moves sets to Trash (30-day recovery, assigned profiles\n  detached). Always asks for approval.\n\n## Recipes\n\n\"This profile lost its login\":\n1. list_cookie_sets and check whether a set is actually assigned to that\n   profile -- a profile carries at most one.\n2. If none is assigned, that is the answer: assign one.\n3. If one is assigned, cookies expire. The set in the library is the\n   snapshot that was imported, so a set that worked last month may need\n   re-exporting. Tell them to open the set on the Cookies tab and look at\n   the expiry dates, and offer go_to_tab('cookies').\n4. Re-exporting is the fix: the built-in Argus Cookie Manager extension,\n   inside a launched browser, exports the live session in the right shape.\n5. After a re-import and assign, hand the launch to open_skill(\"profiles\")\n   so the user can confirm the site opens signed in.\n\nCleaning up the library:\n1. list_cookie_sets and read the profile counts.\n2. Sets used by nobody are the throw-away candidates; name them and their\n   domains and let the user decide. Do not trash on your own initiative.\n\n## Boundaries\n\n- Importing cookies from a file happens in the UI: Cookies tab -> + Cookie-\n  set (a whole folder at once works too). Describe the path and offer\n  go_to_tab('cookies') instead of pretending to import from chat. Argus\n  reads JSON and Netscape cookies.txt.\n- Moving cookies \"between profiles\" is assigning the same set to the target\n  profile. There is no copying of values by hand, by you or by the user.\n\n## Disclosures\n\n- Never print cookie VALUES into the chat. Names and domains are fine;\n  values are session credentials and are as good as the password.\n- One set can serve any number of profiles -- assigning the same set to\n  several means they all open on the SAME account. Say that out loud before\n  a bulk assign; it is occasionally what the user wants and occasionally a\n  mistake they have not noticed yet.",
+  "examples": [
+    "This profile keeps getting logged out — what happened to its cookies?",
+    "Which cookie sets is nobody using?",
+    "Attach the Instagram set to my three Berlin profiles"
+  ],
+  "toolPack": "cookies",
+  "docs": [
+    "pages/cookies",
+    "concepts/cookies",
+    "pages/profiles"
+  ]
+}
