@@ -4,6 +4,11 @@ Documentation, the assistant skill briefs, and the MCP registry manifest for
 [Argus](https://www.browserargus.com), an anti-detect browser for managing hundreds of isolated
 browser profiles — each with its own fingerprint, proxy and cookie jar.
 
+> **Which Argus this is.** Argus is published by Simnetiq Ltd (UK company
+> number 16861177) at [www.browserargus.com](https://www.browserargus.com).
+> Other companies and software products share the name Argus and are unrelated
+> to this one.
+
 This is a local API. It listens on loopback on the machine running Argus, and nothing off that machine can reach it. There is no hosted web API.
 
 ## There is nothing here to install
