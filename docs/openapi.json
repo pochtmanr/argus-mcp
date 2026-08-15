@@ -3,7 +3,7 @@
   "info": {
     "title": "The Argus local API",
     "version": "1.0.0",
-    "summary": "55 endpoints for profiles, proxies, cookies, automations and schedules, 53 of them fronted by MCP tools.",
+    "summary": "84 endpoints for profiles, proxies, cookies, automations and schedules, 85 of them fronted by MCP tools.",
     "description": "This is a local API. It listens on loopback on the machine running Argus, and nothing off that machine can reach it. There is no hosted web API.\n\nThe server starts with the Argus launcher and stops with it. Keys are created in the launcher under the API tab, may be scoped to folders, and the first call from a new client raises an approve-or-deny prompt that holds the request until it is answered.\n\nGenerated from the launcher's own route table. The human version of this document is https://www.browserargus.com/api-reference, and the same content as Markdown is https://www.browserargus.com/api-reference.md.",
     "license": {
       "name": "MIT",
@@ -28,7 +28,7 @@
   "tags": [
     {
       "name": "Profiles",
-      "description": "A profile is an isolated browser identity with its own proxy, fingerprint and cookie jar. You can read them, change them, and open one for automation — but you cannot mint one from here. Creating an identity is done in the app, because a script that makes fifty of them makes fifty that look alike."
+      "description": "A profile is an isolated browser identity with its own proxy, fingerprint and cookie jar. You can create one, read it, change it, put it on a proxy, and open it for automation. Deleting is the one half-move: a profile goes to Trash and can be brought back, and the irreversible purge stays an in-app action."
     },
     {
       "name": "Proxies",
@@ -36,7 +36,7 @@
     },
     {
       "name": "Cookies",
-      "description": "Bulk cookie import, for moving a jar you already have into a profile. Both routes are HTTP-only — no agent tool fronts them."
+      "description": "Cookie sets are jars kept in the workspace and attached to profiles, so an account signed in once can be carried into a profile without signing in again. A set is held by exactly one profile at a time — two profiles on one set is one account signed in twice. The two bulk-import routes, which read files off your own disk, are HTTP-only: no agent tool fronts them."
     },
     {
       "name": "Monitoring",
@@ -49,6 +49,12 @@
     {
       "name": "Schedule",
       "description": "A schedule entry is an ordered list of automations with a time on it — a different thing from the schedule an automation carries itself, which runs that one automation alone. Entries fire only while the launcher is open: a time it was closed for is recorded as missed and skipped, never caught up. Occurrences is the record of what ran, not the plan for what will."
+    },
+    {
+      "name": "Datasets"
+    },
+    {
+      "name": "Projects"
     },
     {
       "name": "Connectors"
@@ -73,7 +79,7 @@
       "get": {
         "operationId": "argus_list_profiles",
         "summary": "List profiles (optional ?folder=<id>)",
-        "description": "List profiles (optional ?folder=<id>)\n\nMCP tool: `argus_list_profiles`.",
+        "description": "List profiles (optional ?folder=<id>)\n\nList the Argus browser profiles this key can see. Each profile is an isolated browser identity with its own proxy, fingerprint and cookies.\n\nMCP tool: `argus_list_profiles`.",
         "tags": [
           "Profiles"
         ],
@@ -159,14 +165,25 @@
             }
           }
         },
-        "x-mcp-tool": "argus_list_profiles"
+        "x-mcp-tool": "argus_list_profiles",
+        "parameters": [
+          {
+            "name": "folder",
+            "in": "query",
+            "required": false,
+            "description": "Only profiles in this folder id (argus_list_folders). Sent as the ?folder= query parameter, not a body. Omit for every profile the key can see.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/v1/profiles/get": {
       "post": {
         "operationId": "argus_get_profile",
         "summary": "Read one profile",
-        "description": "Read one profile\n\nMCP tool: `argus_get_profile`.",
+        "description": "Read one profile\n\nRead one profile: its proxy, status, tags, folder and fingerprint. The reply also carries `sharing` — empty when nothing is wrong, and otherwise the cookie-set or proxy this profile shares past its limit, with the other profiles involved and the fix.\n\nMCP tool: `argus_get_profile`.",
         "tags": [
           "Profiles"
         ],
@@ -252,7 +269,29 @@
             }
           }
         },
-        "x-mcp-tool": "argus_get_profile"
+        "x-mcp-tool": "argus_get_profile",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileId": {
+                    "type": "string",
+                    "description": "From argus_list_profiles."
+                  }
+                },
+                "required": [
+                  "profileId"
+                ]
+              },
+              "example": {
+                "profileId": "<id>"
+              }
+            }
+          }
+        }
       }
     },
     "/v1/profiles/create": {
@@ -421,7 +460,7 @@
       "post": {
         "operationId": "argus_update_profile",
         "summary": "Update name, status, tags, colour, avatar, folder, proxy mode, start URL or launch automation",
-        "description": "Update name, status, tags, colour, avatar, folder, proxy mode, start URL or launch automation\n\nMCP tool: `argus_update_profile`.",
+        "description": "Update name, status, tags, colour, avatar, folder, proxy mode, start URL or launch automation\n\nChange a profile's name, status, tags, colour, avatar, folder, proxy mode, start URL, login URL or launch automation. Assigning a specific proxy is a separate call (argus_assign_proxy); setting proxyMode to direct or free_proxy here clears whatever proxy the profile was on.\n\nMCP tool: `argus_update_profile`.",
         "tags": [
           "Profiles"
         ],
@@ -507,7 +546,80 @@
             }
           }
         },
-        "x-mcp-tool": "argus_update_profile"
+        "x-mcp-tool": "argus_update_profile",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileId": {
+                    "type": "string",
+                    "description": "From argus_list_profiles."
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "The profile's display name."
+                  },
+                  "status": {
+                    "type": "string",
+                    "description": "Workflow status label. argus_list_statuses has the ones this workspace uses."
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "At most 5; extras are dropped. Replaces the whole list."
+                  },
+                  "color": {
+                    "type": "string",
+                    "description": "A preset name like blue or violet, or a #rrggbb hex."
+                  },
+                  "avatar": {
+                    "type": "string",
+                    "description": "The mark shown beside the name: \"brand:<slug>\" for one of the built-in site logos (brand:instagram, brand:facebook, brand:x, brand:tiktok, ...), or \"\" to go back to the initials. Uploaded pictures are set in the app."
+                  },
+                  "folderId": {
+                    "type": "string",
+                    "description": "Folder to file it in (argus_list_folders)."
+                  },
+                  "proxyMode": {
+                    "type": "string",
+                    "description": "assigned, direct or free_proxy. assigned requires the profile to already have a proxy (use argus_assign_proxy to set one); direct and free_proxy clear it."
+                  },
+                  "startUrl": {
+                    "type": "string",
+                    "description": "URL the profile opens on launch. \"\" to clear."
+                  },
+                  "loginUrl": {
+                    "type": "string",
+                    "description": "The sign-in page this profile's stored email/password belong to. A note, not an action -- nothing fills the form in; an automation reads it as {{profile.login_url}}. \"\" to clear. Distinct from startUrl, which is where a launch lands."
+                  },
+                  "automationId": {
+                    "type": "string",
+                    "description": "Automation to run on every launch (argus_list_automations). \"\" to detach."
+                  },
+                  "automationVars": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "This profile's answers to automations' declared parameters, keyed by automation id: {\"<automationId>\": {\"city_name\": \"Dortmund\"}}. This is how one automation runs a different city per profile. Replaces the whole map, so read it back with argus_get_profile and merge rather than sending one automation on its own. Values for a parameter the automation no longer declares are ignored at run time. See argus_automation_schema for the parameter vocabulary."
+                  }
+                },
+                "required": [
+                  "profileId"
+                ]
+              },
+              "example": {
+                "profileId": "<id>",
+                "status": "Ready",
+                "proxyMode": "direct",
+                "startUrl": "https://example.com"
+              }
+            }
+          }
+        }
       }
     },
     "/v1/profiles/notes": {
@@ -755,7 +867,7 @@
       "post": {
         "operationId": "argus_assign_proxy",
         "summary": "Put a profile on a proxy from the library",
-        "description": "Put a profile on a proxy from the library\n\nMCP tool: `argus_assign_proxy`.",
+        "description": "Put a profile on a proxy from the library\n\nPut a profile on a proxy from the library. A profile whose proxy mode is \"assigned\" needs a working proxy before it will launch. REFUSED when the proxy would then be shared by more profiles than the user's limit allows, or when it would put two profiles for the same platform behind one exit; the refusal names the profiles already on it and the limit it was judged against. Sharing an exit links the accounts behind it. Repeat the call with acknowledgeSharing true if the user wants it anyway -- unlike a shared cookie-set, shared egress is a normal way to run throwaway profiles, so this is a threshold and not a prohibition. argus_sharing_report shows the whole picture before you start.\n\nMCP tool: `argus_assign_proxy`.",
         "tags": [
           "Profiles"
         ],
@@ -841,14 +953,139 @@
             }
           }
         },
-        "x-mcp-tool": "argus_assign_proxy"
+        "x-mcp-tool": "argus_assign_proxy",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileId": {
+                    "type": "string",
+                    "description": "From argus_list_profiles."
+                  },
+                  "proxyId": {
+                    "type": "string",
+                    "description": "From argus_list_proxies."
+                  },
+                  "acknowledgeSharing": {
+                    "type": "boolean",
+                    "description": "Proceed even though the proxy would then be shared past the limit. Only after the user has been told and has agreed -- the refusal this overrides names the profiles already on that exit and the limit it was judged against."
+                  }
+                },
+                "required": [
+                  "profileId",
+                  "proxyId"
+                ]
+              },
+              "example": {
+                "profileId": "<id>",
+                "proxyId": "<id>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sharing/report": {
+      "get": {
+        "operationId": "argus_sharing_report",
+        "summary": "Every cookie-set and proxy shared past its limit, with the limits themselves",
+        "description": "Every cookie-set and proxy shared past its limit, with the limits themselves\n\nList every cookie-set and proxy in this workspace that is shared past its limit, and the limits themselves. CALL THIS BEFORE assigning cookie-sets or proxies, before launching a batch of profiles, and before building a workflow that does either -- one call here replaces discovering the same state one refusal at a time. A cookie-set may be held by exactly one profile, and that is a fixed rule rather than a setting: two profiles on one set is one account signed in twice. A proxy may be shared up to the limit reported, which the user sets per machine. Each warning carries the profiles involved and the remedy to apply. An empty warnings array means nothing is over its limit.\n\nMCP tool: `argus_sharing_report`.",
+        "tags": [
+          "Profiles"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_sharing_report"
       }
     },
     "/v1/profiles/launch-automation": {
       "post": {
         "operationId": "argus_launch_profile",
         "summary": "Open a profile for automation; returns its CDP url. Reuses a running session unless relaunch is set",
-        "description": "Open a profile for automation; returns its CDP url. Reuses a running session unless relaunch is set\n\nMCP tool: `argus_launch_profile`.",
+        "description": "Open a profile for automation; returns its CDP url. Reuses a running session unless relaunch is set\n\nOpen a profile in the Argus browser, ready for automation. If it is already open this returns the existing session rather than restarting it; pass relaunch=true to force a fresh window (which closes the current one). A profile set to use an assigned proxy needs that proxy to be working before it will launch. The session carries whatever identity the profile already holds, including its cookies — do not send it anything the profile is not meant to have. The reply carries a `warnings` array: a non-empty one means this profile shares its cookie-set or its proxy past the limit, which for a cookie-set means this account is signed in from another profile too. Launching is NOT blocked for it — the conflict already existed — but tell the user rather than opening a batch of them silently, and use argus_sharing_report before a batch to see it in one call.\n\nMCP tool: `argus_launch_profile`.",
         "tags": [
           "Profiles"
         ],
@@ -934,14 +1171,41 @@
             }
           }
         },
-        "x-mcp-tool": "argus_launch_profile"
+        "x-mcp-tool": "argus_launch_profile",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileId": {
+                    "type": "string",
+                    "description": "From argus_list_profiles."
+                  },
+                  "relaunch": {
+                    "type": "boolean",
+                    "description": "Close any existing session and start a new one. Omitted or false reuses a session that is already open."
+                  }
+                },
+                "required": [
+                  "profileId"
+                ]
+              },
+              "example": {
+                "profileId": "<id>",
+                "relaunch": false
+              }
+            }
+          }
+        }
       }
     },
     "/v1/profiles/cdp": {
       "post": {
         "operationId": "argus_profile_session",
         "summary": "Where a running profile's CDP endpoint is, without launching it",
-        "description": "Where a running profile's CDP endpoint is, without launching it\n\nMCP tool: `argus_profile_session`.",
+        "description": "Where a running profile's CDP endpoint is, without launching it\n\nCheck whether a profile is currently open for automation, and where its debugging endpoint is. Call this before launching to avoid disturbing a session that is already running.\n\nMCP tool: `argus_profile_session`.",
         "tags": [
           "Profiles"
         ],
@@ -1027,14 +1291,36 @@
             }
           }
         },
-        "x-mcp-tool": "argus_profile_session"
+        "x-mcp-tool": "argus_profile_session",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileId": {
+                    "type": "string",
+                    "description": "From argus_list_profiles. Answers whether it is open and where its debugging endpoint is; never launches it."
+                  }
+                },
+                "required": [
+                  "profileId"
+                ]
+              },
+              "example": {
+                "profileId": "<id>"
+              }
+            }
+          }
+        }
       }
     },
     "/v1/profiles/close-automation": {
       "post": {
         "operationId": "argus_close_profile",
         "summary": "Close a session this key opened",
-        "description": "Close a session this key opened\n\nMCP tool: `argus_close_profile`.",
+        "description": "Close a session this key opened\n\nClose a profile session this key opened.\n\nMCP tool: `argus_close_profile`.",
         "tags": [
           "Profiles"
         ],
@@ -1120,14 +1406,36 @@
             }
           }
         },
-        "x-mcp-tool": "argus_close_profile"
+        "x-mcp-tool": "argus_close_profile",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileId": {
+                    "type": "string",
+                    "description": "From argus_list_profiles. Only a session this key opened can be closed here."
+                  }
+                },
+                "required": [
+                  "profileId"
+                ]
+              },
+              "example": {
+                "profileId": "<id>"
+              }
+            }
+          }
+        }
       }
     },
     "/v1/profiles/delete": {
       "post": {
         "operationId": "argus_delete_profile",
         "summary": "Move a profile to Trash (permanent: true to purge; the tool only soft-deletes)",
-        "description": "Move a profile to Trash (permanent: true to purge; the tool only soft-deletes)\n\nMCP tool: `argus_delete_profile`.",
+        "description": "Move a profile to Trash (permanent: true to purge; the tool only soft-deletes)\n\nMove a profile to Trash, where the app can restore it. This does not remove the profile's on-disk browser data. Permanent deletion is only available in the app, not over this tool.\n\nMCP tool: `argus_delete_profile`.",
         "tags": [
           "Profiles"
         ],
@@ -1213,14 +1521,36 @@
             }
           }
         },
-        "x-mcp-tool": "argus_delete_profile"
+        "x-mcp-tool": "argus_delete_profile",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileId": {
+                    "type": "string",
+                    "description": "From argus_list_profiles. Moves it to Trash, where the app can restore it; the on-disk browser data stays. argus_delete_profile never sends `permanent`, so an irreversible purge stays an in-app action."
+                  }
+                },
+                "required": [
+                  "profileId"
+                ]
+              },
+              "example": {
+                "profileId": "<id>"
+              }
+            }
+          }
+        }
       }
     },
     "/v1/profiles/update-fingerprint": {
       "post": {
         "operationId": "argus_update_fingerprint",
         "summary": "Re-roll or override a profile's fingerprint",
-        "description": "Re-roll or override a profile's fingerprint\n\nMCP tool: `argus_update_fingerprint`.",
+        "description": "Re-roll or override a profile's fingerprint\n\nChange parts of a profile's fingerprint. The fields you send are merged into the stored fingerprint; anything you omit keeps its value. Read the current one with argus_get_profile first. Changing the device identity of a profile that is holding a logged-in session looks exactly like a stolen cookie and can get the session challenged -- prefer a new profile for a new identity.\n\nMCP tool: `argus_update_fingerprint`.",
         "tags": [
           "Profiles"
         ],
@@ -1306,14 +1636,45 @@
             }
           }
         },
-        "x-mcp-tool": "argus_update_fingerprint"
+        "x-mcp-tool": "argus_update_fingerprint",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileId": {
+                    "type": "string",
+                    "description": "From argus_list_profiles."
+                  },
+                  "fingerprint": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "The fingerprint fields to change, merged into the stored one -- anything omitted keeps its value. Any subset of these 21 keys, and nothing else (an undeclared key is dropped): os (Windows 11 | Windows 10 | macOS | Ubuntu | Android | iOS), browser_version, user_agent, language, timezone, geolocation, webrtc (Proxy only | Disabled | Real | Custom), canvas (Real | Noise | Block), webgl (Real | Noise | Block), webgpu (Real | Block), client_rects (Real | Noise | Block), audio (Real | Noise | Block), webgl_vendor, webgl_renderer, screen (Auto, or a size like 1920x1080), cpu_model, cpu_cores (number), memory_gb (number), media_devices, do_not_track (boolean), rotate_on_launch (boolean -- re-rolls the noise seeds on every launch, unsafe for a profile holding a session). Everything else is a string. Read the current fingerprint with argus_get_profile first."
+                  }
+                },
+                "required": [
+                  "profileId",
+                  "fingerprint"
+                ]
+              },
+              "example": {
+                "profileId": "<id>",
+                "fingerprint": {
+                  "canvas": "Noise"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/proxies": {
       "get": {
         "operationId": "argus_list_proxies",
         "summary": "List proxies",
-        "description": "List proxies\n\nMCP tool: `argus_list_proxies`.",
+        "description": "List proxies\n\nList the proxies in this account's library.\n\nMCP tool: `argus_list_proxies`.",
         "tags": [
           "Proxies"
         ],
@@ -1404,193 +1765,9 @@
     },
     "/v1/proxies/create": {
       "post": {
-        "operationId": "post_v1_proxies_create",
+        "operationId": "argus_create_proxy",
         "summary": "Add proxy",
-        "description": "Add proxy\n\nNo MCP tool — this route is reachable over HTTP only, on purpose.",
-        "tags": [
-          "Proxies"
-        ],
-        "responses": {
-          "200": {
-            "description": "The call was accepted. `status` is true.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Success"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The body failed validation. The message names the exact path that failed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "No bearer token, or one that does not match a stored key.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "No such route.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "A documented route that is not implemented yet.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Argus Launcher is not open. Nothing can answer until it is.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "504": {
-            "description": "The launcher window did not answer in time.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/proxies/update": {
-      "post": {
-        "operationId": "post_v1_proxies_update",
-        "summary": "Update a proxy",
-        "description": "Update a proxy\n\nNo MCP tool — this route is reachable over HTTP only, on purpose.",
-        "tags": [
-          "Proxies"
-        ],
-        "responses": {
-          "200": {
-            "description": "The call was accepted. `status` is true.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Success"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The body failed validation. The message names the exact path that failed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "No bearer token, or one that does not match a stored key.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "No such route.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "A documented route that is not implemented yet.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Argus Launcher is not open. Nothing can answer until it is.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          },
-          "504": {
-            "description": "The launcher window did not answer in time.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Failure"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/proxies/check": {
-      "post": {
-        "operationId": "argus_check_proxy",
-        "summary": "Check reachability and egress IP",
-        "description": "Check reachability and egress IP\n\nMCP tool: `argus_check_proxy`.",
+        "description": "Add proxy\n\nAdd a proxy to the library: host, port, type http or socks5, optional username and password. The proxy lands UNCHECKED -- call argus_check_proxy, or wait for the background sweep, before assigning it to profiles, because at launch a proxy that does not respond blocks the launch rather than falling back to the real address. Returns the saved proxy and its id, which argus_update_proxy and argus_assign_proxy take.\n\nMCP tool: `argus_create_proxy`.",
         "tags": [
           "Proxies"
         ],
@@ -1676,14 +1853,60 @@
             }
           }
         },
-        "x-mcp-tool": "argus_check_proxy"
+        "x-mcp-tool": "argus_create_proxy",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "host": {
+                    "type": "string",
+                    "description": "The proxy's address."
+                  },
+                  "port": {
+                    "type": "number",
+                    "description": "The port to dial."
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "What the Proxies tab calls it. Defaults to host:port."
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "http or socks5. Defaults to http."
+                  },
+                  "username": {
+                    "type": "string",
+                    "description": "Stored, never returned by any route."
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "Stored, never returned by any route."
+                  }
+                },
+                "required": [
+                  "host",
+                  "port"
+                ]
+              },
+              "example": {
+                "name": "US proxy",
+                "type": "socks5",
+                "host": "1.2.3.4",
+                "port": 1080
+              }
+            }
+          }
+        }
       }
     },
-    "/v1/proxies/delete": {
+    "/v1/proxies/update": {
       "post": {
-        "operationId": "post_v1_proxies_delete",
-        "summary": "Remove a proxy",
-        "description": "Remove a proxy\n\nNo MCP tool — this route is reachable over HTTP only, on purpose.",
+        "operationId": "argus_update_proxy",
+        "summary": "Update a proxy",
+        "description": "Update a proxy\n\nChange an existing proxy's name, type, host, port, username or password. Only the fields you send are written. Changing the connection details clears the stored check result -- the status you saw before is stale until the next check -- and the password is stored, never returned. To re-test after a change, call argus_check_proxy.\n\nMCP tool: `argus_update_proxy`.",
         "tags": [
           "Proxies"
         ],
@@ -1768,14 +1991,57 @@
               }
             }
           }
+        },
+        "x-mcp-tool": "argus_update_proxy",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "proxyId": {
+                    "type": "string",
+                    "description": "From argus_list_proxies."
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "http or socks5."
+                  },
+                  "host": {
+                    "type": "string"
+                  },
+                  "port": {
+                    "type": "number"
+                  },
+                  "username": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "proxyId"
+                ]
+              },
+              "example": {
+                "proxyId": "<id>",
+                "name": "US proxy"
+              }
+            }
+          }
         }
       }
     },
-    "/v1/proxies/reimport": {
+    "/v1/proxies/check": {
       "post": {
-        "operationId": "post_v1_proxies_reimport",
-        "summary": "Re-import proxies from a file on disk",
-        "description": "Re-import proxies from a file on disk\n\nNo MCP tool — this route is reachable over HTTP only, on purpose.",
+        "operationId": "argus_check_proxy",
+        "summary": "Check reachability and egress IP",
+        "description": "Check reachability and egress IP\n\nCheck a proxy's reachability and egress IP.\n\nMCP tool: `argus_check_proxy`.",
         "tags": [
           "Proxies"
         ],
@@ -1857,6 +2123,289 @@
                 "schema": {
                   "$ref": "#/components/schemas/Failure"
                 }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_check_proxy",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "host": {
+                    "type": "string",
+                    "description": "The proxy's address."
+                  },
+                  "port": {
+                    "type": "number",
+                    "description": "The port to dial."
+                  },
+                  "username": {
+                    "type": "string",
+                    "description": "Only if the proxy authenticates."
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "Only if the proxy authenticates."
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "http or socks5. Defaults to http."
+                  }
+                },
+                "required": [
+                  "host",
+                  "port"
+                ]
+              },
+              "example": {
+                "host": "1.2.3.4",
+                "port": 1080,
+                "type": "socks5"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/proxies/delete": {
+      "post": {
+        "operationId": "argus_delete_proxy",
+        "summary": "Remove a proxy",
+        "description": "Remove a proxy\n\nPermanently delete a proxy. There is no Trash for proxies and no undo: the row is gone and every profile that used it is left without a proxy. The user must approve this in the app, and the approval card names how many profiles are affected.\n\nMCP tool: `argus_delete_proxy`.\n\nThis call blocks while an approve-or-deny card is shown in the launcher, and answers 403 if it is denied or allowed to lapse.",
+        "tags": [
+          "Proxies"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_delete_proxy",
+        "x-approval": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "proxyId": {
+                    "type": "string",
+                    "description": "From argus_list_proxies."
+                  }
+                },
+                "required": [
+                  "proxyId"
+                ]
+              },
+              "example": {
+                "proxyId": "<id>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/proxies/reimport": {
+      "post": {
+        "operationId": "argus_reimport_proxies",
+        "summary": "Re-import proxies from a list of rows",
+        "description": "Re-import proxies from a list of rows\n\nRe-import proxies from rows like {ip, port_socks5, port_http, username?, password?, country?}. A row matching an existing proxy by type+host+port UPDATES it and keeps its id, so profiles already assigned to it stay assigned; anything else is created. Every touched proxy has its check columns cleared -- the background sweep re-checks them.\n\nMCP tool: `argus_reimport_proxies`.",
+        "tags": [
+          "Proxies"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_reimport_proxies",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "proxies": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "description": "The rows to merge in. ip or host names the address; port_socks5 or port_http (or port) gives the port and picks the type."
+                  }
+                },
+                "required": [
+                  "proxies"
+                ]
+              },
+              "example": {
+                "proxies": [
+                  {
+                    "ip": "1.2.3.4",
+                    "port_socks5": 1080,
+                    "country": "US"
+                  }
+                ]
               }
             }
           }
@@ -2041,6 +2590,946 @@
                 "schema": {
                   "$ref": "#/components/schemas/Failure"
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/profiles/assign-cookies": {
+      "post": {
+        "operationId": "argus_assign_cookie_set",
+        "summary": "Set which profiles launch with a cookie-set",
+        "description": "Set which profiles launch with a cookie-set\n\nSet which profiles launch with a saved cookie-set. profileIds is the COMPLETE list of profiles holding the set afterwards -- profiles that hold it today and are missing from your list are detached, so send the whole list rather than just the additions. A profile carries at most one cookie-set, so assigning replaces whatever it had. REFUSED by default when the result would put the set on more than one profile: that is one account signed in twice, on two fingerprints and usually two exits, which is the pattern platforms ban for. The refusal names the profiles involved; repeat the call with acknowledgeSharing true only if the user has been told and wants it anyway. Cookies are seeded at each profile's NEXT launch, not immediately.\n\nMCP tool: `argus_assign_cookie_set`.",
+        "tags": [
+          "Cookies"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_assign_cookie_set",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cookieSetId": {
+                    "type": "string",
+                    "description": "The saved set, from argus_list_cookie_sets or argus_sharing_report."
+                  },
+                  "profileIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "The complete list of profiles holding this set afterwards. An empty array detaches it from every profile and parks the set."
+                  },
+                  "acknowledgeSharing": {
+                    "type": "boolean",
+                    "description": "Proceed even though the result puts one session on more than one profile. Only send this when the user has been told and has agreed."
+                  }
+                },
+                "required": [
+                  "cookieSetId",
+                  "profileIds"
+                ]
+              },
+              "example": {
+                "cookieSetId": "<id>",
+                "profileIds": [
+                  "<id>"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/profiles/unassign-cookies": {
+      "post": {
+        "operationId": "argus_unassign_cookie_set",
+        "summary": "Detach profiles from whatever cookie-set they hold",
+        "description": "Detach profiles from whatever cookie-set they hold\n\nDetach profiles from whatever cookie-set they currently hold. This is the fix for a shared session: leave the set on the one profile that should keep it and unassign the rest. The set itself is not deleted and stays in the library. A detached profile keeps whatever its own browser directory already holds on disk, so nothing is logged out right now -- but its next launch seeds no cookies, which for a profile that relied on the set means it opens signed out.\n\nMCP tool: `argus_unassign_cookie_set`.",
+        "tags": [
+          "Cookies"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_unassign_cookie_set",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Profiles to detach. A profile that holds no set is left alone rather than failing the call."
+                  }
+                },
+                "required": [
+                  "profileIds"
+                ]
+              },
+              "example": {
+                "profileIds": [
+                  "<id>"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cookies": {
+      "get": {
+        "operationId": "argus_list_cookie_sets",
+        "summary": "The workspace's cookie sets, metadata only",
+        "description": "The workspace's cookie sets, metadata only\n\nThe workspace's cookie sets: name, domain, cookie count, status, folder, tags and how many profiles use each. Cookie VALUES are never returned over this API -- they are session credentials and stay in the launcher; only names and counts leave.\n\nMCP tool: `argus_list_cookie_sets`.",
+        "tags": [
+          "Cookies"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_list_cookie_sets"
+      }
+    },
+    "/v1/cookies/update": {
+      "post": {
+        "operationId": "argus_update_cookie_set",
+        "summary": "Change a cookie set's name, status, colour, folder or tags",
+        "description": "Change a cookie set's name, status, colour, folder or tags\n\nChange a cookie set's name, status label, colour, folder or tags. Only the fields you send are written. Cookie VALUES never change through the API -- they are session credentials and stay where they are.\n\nMCP tool: `argus_update_cookie_set`.\n\nCookie sets are org-wide objects filed in their own folder namespace, so a key granted one profile folder has nothing coherent to write to. Use an unscoped key to change a set.",
+        "tags": [
+          "Cookies"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_update_cookie_set",
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cookieSetId": {
+                    "type": "string",
+                    "description": "From argus_list_cookie_sets."
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "description": "A label from argus_list_statuses; \"\" clears it."
+                  },
+                  "color": {
+                    "type": "string",
+                    "description": "A preset name or #rrggbb; \"\" clears it."
+                  },
+                  "folderId": {
+                    "type": "string",
+                    "description": "The cookie folder to file it in (argus_list_folders). Empty moves it to All cookie-sets."
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Replaces the whole list. At most 5."
+                  }
+                },
+                "required": [
+                  "cookieSetId"
+                ]
+              },
+              "example": {
+                "cookieSetId": "<id>",
+                "status": "Stale"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cookies/trash": {
+      "post": {
+        "operationId": "argus_trash_cookie_sets",
+        "summary": "Move cookie sets to Trash",
+        "description": "Move cookie sets to Trash\n\nMove cookie sets to Trash (30-day recovery). Profiles using a trashed set are detached -- their next launch seeds no cookies. The user must approve this in the app, and the card names the sets.\n\nMCP tool: `argus_trash_cookie_sets`.\n\nCookie sets are org-wide objects filed in their own folder namespace, so a key granted one profile folder has nothing coherent to trash. Use an unscoped key.\n\nThis call blocks while an approve-or-deny card is shown in the launcher, and answers 403 if it is denied or allowed to lapse.",
+        "tags": [
+          "Cookies"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_trash_cookie_sets",
+        "x-approval": true,
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cookieSetIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "From argus_list_cookie_sets."
+                  }
+                },
+                "required": [
+                  "cookieSetIds"
+                ]
+              },
+              "example": {
+                "cookieSetIds": [
+                  "<id>"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cookies/trashed": {
+      "get": {
+        "operationId": "argus_list_trashed_cookie_sets",
+        "summary": "The cookie sets currently in Trash",
+        "description": "The cookie sets currently in Trash\n\nThe cookie sets currently in Trash (deleted within the last 30 days, pending purge), with when each was deleted. The fix for a set that seems to have vanished.\n\nMCP tool: `argus_list_trashed_cookie_sets`.",
+        "tags": [
+          "Cookies"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_list_trashed_cookie_sets"
+      }
+    },
+    "/v1/cookies/restore": {
+      "post": {
+        "operationId": "argus_restore_cookie_sets",
+        "summary": "Bring cookie sets back out of Trash",
+        "description": "Bring cookie sets back out of Trash\n\nBring cookie sets back out of Trash. Profiles are NOT re-attached automatically -- a restored set sits in the library until it is assigned again with argus_assign_cookie_set.\n\nMCP tool: `argus_restore_cookie_sets`.\n\nCookie sets are org-wide objects filed in their own folder namespace. Use an unscoped key to restore one.",
+        "tags": [
+          "Cookies"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_restore_cookie_sets",
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cookieSetIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "From argus_list_trashed_cookie_sets."
+                  }
+                },
+                "required": [
+                  "cookieSetIds"
+                ]
+              },
+              "example": {
+                "cookieSetIds": [
+                  "<id>"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cookies/purge": {
+      "post": {
+        "operationId": "argus_purge_cookie_sets",
+        "summary": "Permanently delete cookie sets from Trash",
+        "description": "Permanently delete cookie sets from Trash\n\nPermanently delete cookie sets from Trash, payloads included. There is no undo. The user must approve this in the app, and the card names the sets.\n\nMCP tool: `argus_purge_cookie_sets`.\n\nCookie sets are org-wide objects filed in their own folder namespace. Use an unscoped key to purge one.\n\nThis call blocks while an approve-or-deny card is shown in the launcher, and answers 403 if it is denied or allowed to lapse.",
+        "tags": [
+          "Cookies"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_purge_cookie_sets",
+        "x-approval": true,
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cookieSetIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "From argus_list_trashed_cookie_sets."
+                  }
+                },
+                "required": [
+                  "cookieSetIds"
+                ]
+              },
+              "example": {
+                "cookieSetIds": [
+                  "<id>"
+                ]
               }
             }
           }
@@ -2933,7 +4422,7 @@
       "post": {
         "operationId": "argus_run_automation",
         "summary": "Run an automation against a profile, launching it if needed",
-        "description": "Run an automation against a profile, launching it if needed\n\nRun an automation against a profile, launching the profile if it is not already open. Returns a run id immediately; the run continues in the background. One call is one profile: to run the same automation with different values on several profiles, call it once per profile with that profile's vars, which also gives you a run id per profile to poll.\n\nMCP tool: `argus_run_automation`.",
+        "description": "Run an automation against a profile, launching it if needed\n\nRun an automation against a profile, launching the profile if it is not already open. Returns a run id immediately; the run continues in the background. The reply carries a `warnings` array: non-empty means this profile shares its cookie-set or proxy past the limit, which the run does not block but the user should hear about. One call is one profile: to run the same automation with different values on several profiles, call it once per profile with that profile's vars, which also gives you a run id per profile to poll.\n\nMCP tool: `argus_run_automation`.",
         "tags": [
           "Automations"
         ],
@@ -4237,6 +5726,2219 @@
         }
       }
     },
+    "/v1/datasets": {
+      "get": {
+        "operationId": "argus_list_datasets",
+        "summary": "The workspace's datasets, with their declared columns",
+        "description": "The workspace's datasets, with their declared columns\n\nThe workspace's datasets: id, name, row count, last update, and each declared column's key, name and type. The keys are what argus_query_rows and argus_add_rows index rows by -- they never change, even when a column is renamed, so write against them rather than against the names. A select or tags column also returns its options as {key, label, color}; the option KEY is what a cell stores, so write that -- a label is also accepted and resolved to its key on write.\n\nMCP tool: `argus_list_datasets`.",
+        "tags": [
+          "Datasets"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_list_datasets"
+      }
+    },
+    "/v1/datasets/create": {
+      "post": {
+        "operationId": "argus_create_dataset",
+        "summary": "Create a dataset, optionally with starting columns",
+        "description": "Create a dataset, optionally with starting columns\n\nCreate a dataset with 0 rows, optionally declaring starting columns: [{name, type, options?}]. Types: text, longText, number, checkbox, date, datetime, url, email, phone, select, tags, createdAt, rowNumber, parameter, profile, automation, proxy. Keys are derived from the names and never change. Fill it with argus_add_rows; declare more columns later with argus_update_dataset_schema. profile, automation and proxy columns hold the item's id from argus_list_profiles / argus_list_automations / argus_list_proxies; a name in a row value is resolved to its id on write. A select or tags column declares its choices with options -- without them the column has no choices and no row can be set to one.\n\nMCP tool: `argus_create_dataset`.\n\nDatasets are org-wide objects filed in their own folder namespace, so a key granted one profile folder has nothing coherent to write to. Use an unscoped key to author one.",
+        "tags": [
+          "Datasets"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_create_dataset",
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "folderId": {
+                    "type": "string",
+                    "description": "The dataset folder to file it in (argus_list_folders, datasets group). Omit for All datasets."
+                  },
+                  "columns": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "description": "Starting columns, each {name, type, options?}. At most 60; type defaults to text. options is for select/tags only: [\"New\", \"Won\"] or [{label, color?}]. A key is derived from each label and is what rows store. Colours: slate, stone, red, orange, amber, yellow, lime, green, teal, cyan, sky, blue, indigo, violet, fuchsia, pink. At most 50 options."
+                  },
+                  "icon": {
+                    "type": "string",
+                    "description": "brand:<slug> for a built-in site logo. Omit for the plain glyph."
+                  },
+                  "color": {
+                    "type": "string",
+                    "description": "A preset name like blue or violet, or a #rrggbb hex."
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              },
+              "example": {
+                "name": "Leads",
+                "columns": [
+                  {
+                    "name": "Status",
+                    "type": "select",
+                    "options": [
+                      "New",
+                      "Won"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/datasets/update": {
+      "post": {
+        "operationId": "argus_update_dataset",
+        "summary": "Change a dataset's name, icon, colour or folder",
+        "description": "Change a dataset's name, icon, colour or folder\n\nChange a dataset's name, icon (brand:<slug>), colour, folder or library tags. Rows and columns are untouched.\n\nMCP tool: `argus_update_dataset`.\n\nDatasets are org-wide objects filed in their own folder namespace. Use an unscoped key to change one.",
+        "tags": [
+          "Datasets"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_update_dataset",
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "datasetId": {
+                    "type": "string",
+                    "description": "From argus_list_datasets."
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "icon": {
+                    "type": "string",
+                    "description": "brand:<slug> or \"\" to clear."
+                  },
+                  "color": {
+                    "type": "string",
+                    "description": "A preset name or #rrggbb; \"\" clears it."
+                  },
+                  "folderId": {
+                    "type": "string",
+                    "description": "Empty moves it to All datasets."
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "The dataset's library tags. Replaces the whole list."
+                  }
+                },
+                "required": [
+                  "datasetId"
+                ]
+              },
+              "example": {
+                "datasetId": "<id>",
+                "name": "Leads 2026"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/datasets/schema": {
+      "post": {
+        "operationId": "argus_update_dataset_schema",
+        "summary": "Replace a dataset's declared column list",
+        "description": "Replace a dataset's declared column list\n\nReplace a dataset's DECLARED column list: add, rename, retype or remove columns. Send every column you want to keep: existing ones by their key from argus_list_datasets (same key + new name renames it, same key + new type retypes it), new ones by name alone (a key is derived and never changes). Types include text, number, date, select, tags, parameter, and the workspace-item references profile, automation and proxy -- those three hold the item's id from argus_list_profiles / argus_list_automations / argus_list_proxies, and a name in a row value is resolved to its id on write. Columns you leave out are removed from the schema; their stored values are kept, hidden. Row values are stored against keys, so a rename loses nothing. A select or tags column's choices are its options: OMITTING options on a column KEEPS its existing list, so a rename never wipes it -- only omitting a whole COLUMN removes anything, and options: [] is how you clear them. To edit choices without resending every column, use argus_update_dataset_options. The user must approve this in the app, and the card shows the exact diff.\n\nMCP tool: `argus_update_dataset_schema`.\n\nDatasets are org-wide objects filed in their own folder namespace. Use an unscoped key to change one.\n\nThis call blocks while an approve-or-deny card is shown in the launcher, and answers 403 if it is denied or allowed to lapse.",
+        "tags": [
+          "Datasets"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_update_dataset_schema",
+        "x-approval": true,
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "datasetId": {
+                    "type": "string"
+                  },
+                  "columns": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "description": "The complete new column list, each {key?, name, type, options?}. Keys are for existing columns; new ones go by name alone. At most 60 columns. OMITTING options keeps that column's current choices; [] clears them. Colours: slate, stone, red, orange, amber, yellow, lime, green, teal, cyan, sky, blue, indigo, violet, fuchsia, pink."
+                  }
+                },
+                "required": [
+                  "datasetId",
+                  "columns"
+                ]
+              },
+              "example": {
+                "datasetId": "<id>",
+                "columns": [
+                  {
+                    "key": "email",
+                    "name": "Email",
+                    "type": "email"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/datasets/options": {
+      "post": {
+        "operationId": "argus_update_dataset_options",
+        "summary": "Edit one choice column's options",
+        "description": "Edit one choice column's options\n\nAdd, rename, recolour, reorder or remove the options of ONE select or tags column. The option KEY is what rows store and never changes, so renaming only changes the visible label and rewrites no row -- never use argus_update_rows to fix an option's wording. A cell holding a removed option keeps its value and shows it as a former option. At most 50 options per column. Colours are names: slate, stone, red, orange, amber, yellow, lime, green, teal, cyan, sky, blue, indigo, violet, fuchsia, pink. Only remove and order need the user's approval in the app; adding, renaming and recolouring apply straight away because they touch no row.\n\nMCP tool: `argus_update_dataset_options`.\n\nDatasets are org-wide objects filed in their own folder namespace, so a key granted one profile folder has nothing coherent to write to. Use an unscoped key to author one.\n\nThis call blocks while an approve-or-deny card is shown in the launcher, and answers 403 if it is denied or allowed to lapse.",
+        "tags": [
+          "Datasets"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_update_dataset_options",
+        "x-approval": true,
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "datasetId": {
+                    "type": "string",
+                    "description": "From argus_list_datasets."
+                  },
+                  "column": {
+                    "type": "string",
+                    "description": "The select or tags column, by key or by name."
+                  },
+                  "add": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "description": "New options: [\"Bounced\"] or [{label, color?}]. Without a colour, the next one in the palette is used."
+                  },
+                  "rename": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "description": "Each {key, label}. Changes the visible label only; no row is rewritten."
+                  },
+                  "recolor": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "description": "Each {key, color}."
+                  },
+                  "remove": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Option keys to undeclare. Rows keep their value and show it as a former option."
+                  },
+                  "order": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "The complete remaining key list, in the order you want them drawn."
+                  }
+                },
+                "required": [
+                  "datasetId",
+                  "column"
+                ]
+              },
+              "example": {
+                "datasetId": "<id>",
+                "column": "Status",
+                "add": [
+                  "Bounced"
+                ],
+                "rename": [
+                  {
+                    "key": "New",
+                    "label": "Fresh"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/datasets/sample": {
+      "post": {
+        "operationId": "argus_sample_rows",
+        "summary": "A page of a dataset's rows",
+        "description": "A page of a dataset's rows\n\nA page of a dataset's rows in insertion order: from is 0-based, limit defaults to 10 and caps at 25. Returns the total row count, the starting position, and each row's values by column key. Use argus_query_rows for filtering or aggregation.\n\nMCP tool: `argus_sample_rows`.",
+        "tags": [
+          "Datasets"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_sample_rows",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "datasetId": {
+                    "type": "string"
+                  },
+                  "from": {
+                    "type": "number",
+                    "description": "0-based offset. Defaults to 0."
+                  },
+                  "limit": {
+                    "type": "number",
+                    "description": "Rows to return. Default 10, at most 25."
+                  }
+                },
+                "required": [
+                  "datasetId"
+                ]
+              },
+              "example": {
+                "datasetId": "<id>",
+                "from": 0,
+                "limit": 10
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/datasets/query": {
+      "post": {
+        "operationId": "argus_query_rows",
+        "summary": "Query a dataset's rows by where conditions, optionally aggregated",
+        "description": "Query a dataset's rows by where conditions, optionally aggregated\n\nQuery a dataset's rows. where is a list of {column, op, value} with op one of contains, equals, not_equals, gt, gte, lt, lte, is_empty, not_empty. aggregate is {op: count|sum|avg|min|max, column?, group_by?} -- sum and the rest need a numeric column, and group_by splits the result into groups. limit defaults to 20 and caps at 50. Scans at most 20,000 rows and reports how many were scanned when the dataset is larger, so a partial answer is never presented as the whole truth.\n\nMCP tool: `argus_query_rows`.",
+        "tags": [
+          "Datasets"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_query_rows",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "datasetId": {
+                    "type": "string"
+                  },
+                  "where": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "description": "List of {column, op, value} conditions, ANDed together."
+                  },
+                  "aggregate": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "{op, column?, group_by?} instead of rows."
+                  },
+                  "limit": {
+                    "type": "number",
+                    "description": "Rows to return. Default 20, at most 50."
+                  }
+                },
+                "required": [
+                  "datasetId"
+                ]
+              },
+              "example": {
+                "datasetId": "<id>",
+                "where": [
+                  {
+                    "column": "status",
+                    "op": "equals",
+                    "value": "new"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/datasets/rows": {
+      "post": {
+        "operationId": "argus_add_rows",
+        "summary": "Append rows to a dataset",
+        "description": "Append rows to a dataset\n\nAppend rows to a dataset. Each row is a flat object keyed by the dataset's column keys (argus_list_datasets); undeclared keys are stored but render nowhere until the schema is extended. At most 1000 rows per call. Returns the persisted row count, re-counted after the write rather than trusted. More than 20 rows asks the user to approve.\n\nMCP tool: `argus_add_rows`.\n\nDatasets are org-wide objects filed in their own folder namespace. Use an unscoped key to write rows.\n\nThis call blocks while an approve-or-deny card is shown in the launcher, and answers 403 if it is denied or allowed to lapse.",
+        "tags": [
+          "Datasets"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_add_rows",
+        "x-approval": true,
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "datasetId": {
+                    "type": "string"
+                  },
+                  "rows": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "description": "Flat row objects, keyed by column key. At most 1000."
+                  }
+                },
+                "required": [
+                  "datasetId",
+                  "rows"
+                ]
+              },
+              "example": {
+                "datasetId": "<id>",
+                "rows": [
+                  {
+                    "email": "a@b.c"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/datasets/rows/update": {
+      "post": {
+        "operationId": "argus_update_rows",
+        "summary": "Rewrite dataset rows in place by id",
+        "description": "Rewrite dataset rows in place by id\n\nRewrite rows in place by id with whole replacement objects: [{id, row}]. A row keeps its position in the dataset -- this is a real UPDATE, not a delete-and-reinsert. At most 1000 per call. The user must approve this in the app.\n\nMCP tool: `argus_update_rows`.\n\nDatasets are org-wide objects filed in their own folder namespace. Use an unscoped key to rewrite rows.\n\nThis call blocks while an approve-or-deny card is shown in the launcher, and answers 403 if it is denied or allowed to lapse.",
+        "tags": [
+          "Datasets"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_update_rows",
+        "x-approval": true,
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "datasetId": {
+                    "type": "string"
+                  },
+                  "updates": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "description": "List of {id, row}: the row id from argus_sample_rows/argus_query_rows and its complete replacement object. At most 1000."
+                  }
+                },
+                "required": [
+                  "datasetId",
+                  "updates"
+                ]
+              },
+              "example": {
+                "datasetId": "<id>",
+                "updates": [
+                  {
+                    "id": "<rowId>",
+                    "row": {
+                      "email": "b@c.d"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/datasets/rows/delete": {
+      "post": {
+        "operationId": "argus_delete_rows",
+        "summary": "Delete dataset rows by id or by a where filter",
+        "description": "Delete dataset rows by id or by a where filter\n\nDelete rows by id, or by the same where filter argus_query_rows takes -- a filter is resolved to real rows first, so the approval card states an exact count. At most 1000 per call. There is no undo.\n\nMCP tool: `argus_delete_rows`.\n\nDatasets are org-wide objects filed in their own folder namespace. Use an unscoped key to delete rows.\n\nThis call blocks while an approve-or-deny card is shown in the launcher, and answers 403 if it is denied or allowed to lapse.",
+        "tags": [
+          "Datasets"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_delete_rows",
+        "x-approval": true,
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "datasetId": {
+                    "type": "string"
+                  },
+                  "ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Explicit row ids. Alternative to where."
+                  },
+                  "where": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "description": "The same conditions argus_query_rows takes; resolved to matching rows first."
+                  }
+                },
+                "required": [
+                  "datasetId"
+                ]
+              },
+              "example": {
+                "datasetId": "<id>",
+                "where": [
+                  {
+                    "column": "status",
+                    "op": "equals",
+                    "value": "old"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/datasets/trash": {
+      "post": {
+        "operationId": "argus_trash_datasets",
+        "summary": "Move datasets to Trash",
+        "description": "Move datasets to Trash\n\nMove datasets to Trash (30-day recovery; their rows go with them). The user must approve this in the app, and the card names the datasets.\n\nMCP tool: `argus_trash_datasets`.\n\nDatasets are org-wide objects filed in their own folder namespace. Use an unscoped key to trash one.\n\nThis call blocks while an approve-or-deny card is shown in the launcher, and answers 403 if it is denied or allowed to lapse.",
+        "tags": [
+          "Datasets"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_trash_datasets",
+        "x-approval": true,
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "datasetIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "From argus_list_datasets."
+                  }
+                },
+                "required": [
+                  "datasetIds"
+                ]
+              },
+              "example": {
+                "datasetIds": [
+                  "<id>"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/datasets/trashed": {
+      "get": {
+        "operationId": "argus_list_trashed_datasets",
+        "summary": "The datasets currently in Trash",
+        "description": "The datasets currently in Trash\n\nThe datasets currently in Trash (deleted within the last 30 days, pending purge), with when each was deleted. The fix for a dataset that seems to have vanished.\n\nMCP tool: `argus_list_trashed_datasets`.",
+        "tags": [
+          "Datasets"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_list_trashed_datasets"
+      }
+    },
+    "/v1/datasets/restore": {
+      "post": {
+        "operationId": "argus_restore_datasets",
+        "summary": "Bring datasets back out of Trash",
+        "description": "Bring datasets back out of Trash\n\nBring datasets back out of Trash. Refused at the 200-dataset workspace cap.\n\nMCP tool: `argus_restore_datasets`.\n\nDatasets are org-wide objects filed in their own folder namespace. Use an unscoped key to restore one.",
+        "tags": [
+          "Datasets"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_restore_datasets",
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "datasetIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "From argus_list_trashed_datasets."
+                  }
+                },
+                "required": [
+                  "datasetIds"
+                ]
+              },
+              "example": {
+                "datasetIds": [
+                  "<id>"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/datasets/purge": {
+      "post": {
+        "operationId": "argus_purge_datasets",
+        "summary": "Permanently delete datasets from Trash",
+        "description": "Permanently delete datasets from Trash\n\nPermanently delete datasets from Trash, rows and all. There is no undo. The user must approve this in the app, and the card names the datasets.\n\nMCP tool: `argus_purge_datasets`.\n\nDatasets are org-wide objects filed in their own folder namespace. Use an unscoped key to purge one.\n\nThis call blocks while an approve-or-deny card is shown in the launcher, and answers 403 if it is denied or allowed to lapse.",
+        "tags": [
+          "Datasets"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_purge_datasets",
+        "x-approval": true,
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "datasetIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "From argus_list_trashed_datasets."
+                  }
+                },
+                "required": [
+                  "datasetIds"
+                ]
+              },
+              "example": {
+                "datasetIds": [
+                  "<id>"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects": {
+      "get": {
+        "operationId": "argus_list_projects",
+        "summary": "The workspace's projects, what each holds, and the index of its brain",
+        "description": "The workspace's projects, what each holds, and the index of its brain\n\nThe workspace's projects: each one's id, name, one-line goal, how many profiles, proxies, cookie sets, automations and datasets it holds, and the index of its local brain -- every document by path and title, without the bodies. A project is a named piece of work that spans every tab ('grow 20 accounts for Client X'), and its brain is where the rules, notes and runbooks for that work are kept. Read a project's direction with argus_project_context; read any single document as the MCP resource argus://project/<id>/<path>, which is also what resources/list enumerates.\n\nMCP tool: `argus_list_projects`.\n\nA project deliberately spans folders -- it groups profiles, proxies, cookie sets, automations and datasets that are filed in different ones -- so a folder scope has nothing to narrow here, and honouring one would mean silently answering with half a project. Use an unscoped key to read a project or delegate to it.",
+        "tags": [
+          "Projects"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_list_projects",
+        "x-key-scope": "unscoped"
+      }
+    },
+    "/v1/projects/{id}/context": {
+      "get": {
+        "operationId": "argus_project_context",
+        "summary": "One project's goal, brief and rules, plus the titles of its other documents",
+        "description": "One project's goal, brief and rules, plus the titles of its other documents\n\nOne project's direction and its constraints: the goal, the brief's front matter (its autonomy level, the tools it refuses outright, the hours work may happen in), the brief's prose, the FULL TEXT of every rule the project keeps, and the TITLES of its notes, runbooks and plans. This is how an outside orchestrator learns what a project is for and what it may not do -- read it before acting on anything the project holds, because the rules are binding and are written down nowhere else. Titles rather than bodies for everything but the rules is the point: fetch the few you actually want as resources (argus://project/<id>/<path>) instead of paying for all of them.\n\nMCP tool: `argus_project_context`.\n\nA project deliberately spans folders -- it groups profiles, proxies, cookie sets, automations and datasets that are filed in different ones -- so a folder scope has nothing to narrow here, and honouring one would mean silently answering with half a project. Use an unscoped key to read a project or delegate to it.",
+        "tags": [
+          "Projects"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_project_context",
+        "x-key-scope": "unscoped",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "query",
+            "required": true,
+            "description": "From argus_list_projects. This is the {id} path segment rather than a body field -- over HTTP it goes in the URL; argus_project_context takes it as an argument and builds the path.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/projects/{id}/docs/{path}": {
+      "get": {
+        "operationId": "get_v1_projects_id_docs_path_",
+        "summary": "One document from a project's brain, by path",
+        "description": "One document from a project's brain, by path\n\nOne document from a project's brain by path -- 'PROJECT.md', 'rules/posting-hours.md', 'notes/login-moved.md', 'plans/2026-08-13.json'. This backs the MCP resource argus://project/<id>/<path> and has no tool of its own on purpose: a tool would spend context in every request on documents the model has not asked for, whereas a resource is fetched only once the client has decided it wants that body. Paths come from argus_list_projects or from resources/list; only the shape the project store keeps is served -- the brief at the root, or one of rules/, notes/, runbooks/ and plans/ one level down -- and anything else is a 404 rather than a read.\n\nNo MCP tool — this route is reachable over HTTP only, on purpose.\n\nA project deliberately spans folders -- it groups profiles, proxies, cookie sets, automations and datasets that are filed in different ones -- so a folder scope has nothing to narrow here, and honouring one would mean silently answering with half a project. Use an unscoped key to read a project or delegate to it.",
+        "tags": [
+          "Projects"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-key-scope": "unscoped"
+      }
+    },
+    "/v1/projects/{id}/delegate": {
+      "post": {
+        "operationId": "argus_delegate",
+        "summary": "Hand a goal to Argus's own orchestrator, inside a project's context",
+        "description": "Hand a goal to Argus's own orchestrator, inside a project's context\n\nHand a goal to Argus's own orchestrator, which already holds this project's brief, rules and notes, and get back its summary. Prefer this over driving the project's profiles yourself: the orchestrator enforces the project's autonomy level, its `never` list and its acting hours in code rather than by being asked nicely, and it writes what it learns back into the project's notes where the next session will read it. The summary describes what was done or set in motion -- work that outlives the call keeps running in the launcher, so re-read argus_project_context or the project's notes for how it ended.\n\nMCP tool: `argus_delegate`.\n\nA project deliberately spans folders -- it groups profiles, proxies, cookie sets, automations and datasets that are filed in different ones -- so a folder scope has nothing to narrow here, and honouring one would mean silently answering with half a project. Use an unscoped key to read a project or delegate to it.",
+        "tags": [
+          "Projects"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_delegate",
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "projectId": {
+                    "type": "string",
+                    "description": "From argus_list_projects. This is the {id} path segment rather than a body field -- over HTTP it goes in the URL; argus_delegate takes it as an argument and builds the path."
+                  },
+                  "goal": {
+                    "type": "string",
+                    "description": "One instruction, in plain language, as you would give it to a colleague who has already read the project's brief. Do not restate the project's rules -- the orchestrator has them."
+                  }
+                },
+                "required": [
+                  "projectId",
+                  "goal"
+                ]
+              },
+              "example": {
+                "goal": "Warm up the five new profiles for an hour each"
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/connectors": {
       "get": {
         "operationId": "argus_list_connectors",
@@ -5009,6 +8711,215 @@
           }
         },
         "x-mcp-tool": "argus_list_statuses"
+      }
+    },
+    "/v1/proxy-share-limit": {
+      "get": {
+        "operationId": "argus_get_proxy_share_limit",
+        "summary": "This machine's proxy-sharing threshold",
+        "description": "This machine's proxy-sharing threshold\n\nThis machine's proxy-sharing threshold: how many profiles per proxy pass without a warning chip, whether the warning is on, and whether two profiles on the same platform escalate ahead of the count. It is a per-MACHINE preference (localStorage), not a workspace setting -- two people can honestly disagree about how much sharing is too much, and argus_sharing_report judges against it.\n\nMCP tool: `argus_get_proxy_share_limit`.",
+        "tags": [
+          "Workspace"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_get_proxy_share_limit"
+      },
+      "post": {
+        "operationId": "argus_set_proxy_share_limit",
+        "summary": "Change this machine's proxy-sharing threshold",
+        "description": "Change this machine's proxy-sharing threshold\n\nChange this machine's proxy-sharing threshold. `enabled` turns the warning chip on or off; `limit` is profiles per proxy that pass without escalating (1-50, clamped); `flagSamePlatform` makes two profiles on the same platform escalate ahead of the count. Only the fields you send are written. Local to this machine -- it changes what THIS launcher's tables warn about, not what a teammate's do.\n\nMCP tool: `argus_set_proxy_share_limit`.",
+        "tags": [
+          "Workspace"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_set_proxy_share_limit",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "limit": {
+                    "type": "number",
+                    "description": "Profiles per proxy that pass without escalating. 1-50; clamped."
+                  },
+                  "flagSamePlatform": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "example": {
+                "limit": 5
+              }
+            }
+          }
+        }
       }
     },
     "/v1/telegram": {
@@ -6213,31 +10124,117 @@
       "name": "argus_list_tabs",
       "group": "Driving a page",
       "summary": "List the open pages in a running profile",
-      "description": "No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first."
+      "description": "No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "description": "The profile whose session to read. It must already be open -- argus_launch_profile opens one."
+          }
+        },
+        "required": [
+          "profileId"
+        ]
+      }
     },
     {
       "name": "argus_navigate",
       "group": "Driving a page",
       "summary": "Point a page at a URL and wait for it to settle",
-      "description": "No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first."
+      "description": "No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "description": "The running profile whose active page to point somewhere."
+          },
+          "url": {
+            "type": "string",
+            "description": "Where to send the active page."
+          }
+        },
+        "required": [
+          "profileId",
+          "url"
+        ]
+      }
     },
     {
       "name": "argus_read_page",
       "group": "Driving a page",
       "summary": "Read a page's visible text, whole or by CSS selector",
-      "description": "No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first."
+      "description": "No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "description": "The running profile whose active page to read."
+          },
+          "selector": {
+            "type": "string",
+            "description": "CSS selector; defaults to the whole body."
+          },
+          "maxChars": {
+            "type": "number",
+            "description": "How much text to return. Defaults to 20000."
+          }
+        },
+        "required": [
+          "profileId"
+        ]
+      }
     },
     {
       "name": "argus_screenshot",
       "group": "Driving a page",
       "summary": "Screenshot a page — JPEG by default, PNG on request",
-      "description": "No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first."
+      "description": "No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "description": "The running profile whose active page to capture."
+          },
+          "fullPage": {
+            "type": "boolean",
+            "description": "Capture the whole scrollable page rather than the viewport."
+          },
+          "png": {
+            "type": "boolean",
+            "description": "Return a lossless PNG instead of the default JPEG."
+          }
+        },
+        "required": [
+          "profileId"
+        ]
+      }
     },
     {
       "name": "argus_eval",
       "group": "Driving a page",
       "summary": "Evaluate a JavaScript expression in a page and return its value",
-      "description": "No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first."
+      "description": "No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "description": "The running profile whose active page to evaluate in."
+          },
+          "expression": {
+            "type": "string",
+            "description": "A JavaScript expression. Promises are awaited and the resolved value returned."
+          }
+        },
+        "required": [
+          "profileId",
+          "expression"
+        ]
+      }
     }
   ]
 }

@@ -11,6 +11,7 @@
   "docs": [
     "pages/proxies",
     "concepts/proxies",
+    "concepts/proxies-udp-quic",
     "concepts/sharing-limits",
     "troubleshooting/proxy-errors"
   ]

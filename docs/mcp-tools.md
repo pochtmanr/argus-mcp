@@ -1,6 +1,6 @@
 # Argus MCP tools
 
-53 tools, across 55 endpoints. This is the list an MCP client receives from `tools/list`; the full request and response detail for each one is in [api-reference.md](./api-reference.md).
+85 tools, across 84 endpoints. This is the list an MCP client receives from `tools/list`; the full request and response detail for each one is in [api-reference.md](./api-reference.md).
 
 This is a local API. It listens on loopback on the machine running Argus, and nothing off that machine can reach it. There is no hosted web API.
 
@@ -15,6 +15,7 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 | `argus_profile_notes` | `POST /v1/profiles/notes` | Read a profile's notes, newest first |
 | `argus_add_profile_note` | `POST /v1/profiles/notes/add` | Append a note to a profile |
 | `argus_assign_proxy` | `POST /v1/profiles/assign-proxy` | Put a profile on a proxy from the library |
+| `argus_sharing_report` | `GET /v1/sharing/report` | Every cookie-set and proxy shared past its limit, with the limits themselves |
 | `argus_launch_profile` | `POST /v1/profiles/launch-automation` | Open a profile for automation; returns its CDP url. Reuses a running session unless relaunch is set |
 | `argus_profile_session` | `POST /v1/profiles/cdp` | Where a running profile's CDP endpoint is, without launching it |
 | `argus_close_profile` | `POST /v1/profiles/close-automation` | Close a session this key opened |
@@ -26,7 +27,24 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 | Tool | Endpoint | What it does |
 | --- | --- | --- |
 | `argus_list_proxies` | `GET /v1/proxies` | List proxies |
+| `argus_create_proxy` | `POST /v1/proxies/create` | Add proxy |
+| `argus_update_proxy` | `POST /v1/proxies/update` | Update a proxy |
 | `argus_check_proxy` | `POST /v1/proxies/check` | Check reachability and egress IP |
+| `argus_delete_proxy` | `POST /v1/proxies/delete` | Remove a proxy |
+| `argus_reimport_proxies` | `POST /v1/proxies/reimport` | Re-import proxies from a list of rows |
+
+## Cookies
+
+| Tool | Endpoint | What it does |
+| --- | --- | --- |
+| `argus_assign_cookie_set` | `POST /v1/profiles/assign-cookies` | Set which profiles launch with a cookie-set |
+| `argus_unassign_cookie_set` | `POST /v1/profiles/unassign-cookies` | Detach profiles from whatever cookie-set they hold |
+| `argus_list_cookie_sets` | `GET /v1/cookies` | The workspace's cookie sets, metadata only |
+| `argus_update_cookie_set` | `POST /v1/cookies/update` | Change a cookie set's name, status, colour, folder or tags |
+| `argus_trash_cookie_sets` | `POST /v1/cookies/trash` | Move cookie sets to Trash |
+| `argus_list_trashed_cookie_sets` | `GET /v1/cookies/trashed` | The cookie sets currently in Trash |
+| `argus_restore_cookie_sets` | `POST /v1/cookies/restore` | Bring cookie sets back out of Trash |
+| `argus_purge_cookie_sets` | `POST /v1/cookies/purge` | Permanently delete cookie sets from Trash |
 
 ## Automations
 
@@ -55,6 +73,33 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 | `argus_schedule_notifications` | `GET /v1/schedule/notifications` | Whether the signed-in user hears about their scheduled days |
 | `argus_set_schedule_notifications` | `POST /v1/schedule/notifications` | Turn the schedule's Telegram messages on or off |
 
+## Datasets
+
+| Tool | Endpoint | What it does |
+| --- | --- | --- |
+| `argus_list_datasets` | `GET /v1/datasets` | The workspace's datasets, with their declared columns |
+| `argus_create_dataset` | `POST /v1/datasets/create` | Create a dataset, optionally with starting columns |
+| `argus_update_dataset` | `POST /v1/datasets/update` | Change a dataset's name, icon, colour or folder |
+| `argus_update_dataset_schema` | `POST /v1/datasets/schema` | Replace a dataset's declared column list |
+| `argus_update_dataset_options` | `POST /v1/datasets/options` | Edit one choice column's options |
+| `argus_sample_rows` | `POST /v1/datasets/sample` | A page of a dataset's rows |
+| `argus_query_rows` | `POST /v1/datasets/query` | Query a dataset's rows by where conditions, optionally aggregated |
+| `argus_add_rows` | `POST /v1/datasets/rows` | Append rows to a dataset |
+| `argus_update_rows` | `POST /v1/datasets/rows/update` | Rewrite dataset rows in place by id |
+| `argus_delete_rows` | `POST /v1/datasets/rows/delete` | Delete dataset rows by id or by a where filter |
+| `argus_trash_datasets` | `POST /v1/datasets/trash` | Move datasets to Trash |
+| `argus_list_trashed_datasets` | `GET /v1/datasets/trashed` | The datasets currently in Trash |
+| `argus_restore_datasets` | `POST /v1/datasets/restore` | Bring datasets back out of Trash |
+| `argus_purge_datasets` | `POST /v1/datasets/purge` | Permanently delete datasets from Trash |
+
+## Projects
+
+| Tool | Endpoint | What it does |
+| --- | --- | --- |
+| `argus_list_projects` | `GET /v1/projects` | The workspace's projects, what each holds, and the index of its brain |
+| `argus_project_context` | `GET /v1/projects/{id}/context` | One project's goal, brief and rules, plus the titles of its other documents |
+| `argus_delegate` | `POST /v1/projects/{id}/delegate` | Hand a goal to Argus's own orchestrator, inside a project's context |
+
 ## Connectors
 
 | Tool | Endpoint | What it does |
@@ -71,6 +116,8 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 | --- | --- | --- |
 | `argus_list_folders` | `GET /v1/folders` | The folders profiles, proxies, cookie sets and automations are filed in |
 | `argus_list_statuses` | `GET /v1/statuses` | Every status label a profile, proxy or cookie set can carry |
+| `argus_get_proxy_share_limit` | `GET /v1/proxy-share-limit` | This machine's proxy-sharing threshold |
+| `argus_set_proxy_share_limit` | `POST /v1/proxy-share-limit` | Change this machine's proxy-sharing threshold |
 
 ## Notifications
 
@@ -109,12 +156,9 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 
 ## Endpoints with no tool
 
-7 routes are reachable over HTTP only, on purpose. An agent cannot call them however plainly they are documented.
+4 routes are reachable over HTTP only, on purpose. An agent cannot call them however plainly they are documented.
 
-- `POST /v1/proxies/create` — Add proxy
-- `POST /v1/proxies/update` — Update a proxy
-- `POST /v1/proxies/delete` — Remove a proxy
-- `POST /v1/proxies/reimport` — Re-import proxies from a file on disk
 - `POST /v1/cookies/bulk-match` — Match exported cookie files in a folder to profiles by name
 - `POST /v1/cookies/push-local` — Attach a cookie file on disk to one profile
 - `POST /v1/monitoring/report` — Report a run's outcome from an external script
+- `GET /v1/projects/{id}/docs/{path}` — One document from a project's brain, by path

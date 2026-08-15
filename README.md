@@ -28,7 +28,7 @@ This repository is the **documentation** for that server, not the server.
 
 | Path | What it is |
 | --- | --- |
-| [`docs/api-reference.md`](./docs/api-reference.md) | All 55 endpoints and 53 tools — paths, fields, curl examples, status codes. |
+| [`docs/api-reference.md`](./docs/api-reference.md) | All 84 endpoints and 85 tools — paths, fields, curl examples, status codes. |
 | [`docs/openapi.json`](./docs/openapi.json) | The same table as an OpenAPI 3.1 spec, for generating a client. |
 | [`docs/mcp-tools.md`](./docs/mcp-tools.md) | The tool list an MCP client receives, and which endpoint each one fronts. |
 | [`skills/`](./skills) | The briefs the in-app assistant runs on, as readable JSON. |
@@ -51,7 +51,7 @@ and blocks until you answer it.
 
 To drive it from a coding agent instead, connect an MCP client — Claude Code,
 Codex, Cursor, Gemini CLI, Windsurf, VS Code, Zed and others are supported — and
-the 53 tools appear on their own.
+the 85 tools appear on their own.
 
 ## About `skills/`
 
@@ -59,10 +59,10 @@ An Argus *skill* is the working brief the in-app assistant loads for one job:
 instructions, worked examples, a reference shelf, and the pack of tools it may
 reach.
 
-**These twelve already ship inside Argus.** They are published here to be read
-and to be adapted — not installed, because you already have them. Each file is
-in the shape `POST /v1/skills/save` accepts, so editing one and posting it
-creates *your own* custom skill:
+Every brief in `skills/` **already ships inside Argus**. They are published here
+to be read and to be adapted — not installed, because you already have them.
+Each file is in the shape `POST /v1/skills/save` accepts, so editing one and
+posting it creates *your own* custom skill:
 
 ```sh
 curl -X POST "http://127.0.0.1:39219/v1/skills/save" \
@@ -70,6 +70,9 @@ curl -X POST "http://127.0.0.1:39219/v1/skills/save" \
   -H "Content-Type: application/json" \
   -d @skills/proxies.json
 ```
+
+[`skills/README.md`](./skills/README.md) is the roster: every brief, what it is
+for, and which pack of tools each one carries.
 
 Note what the files deliberately omit:
 
@@ -79,13 +82,13 @@ Note what the files deliberately omit:
 - **No `entryTabs`.** A custom skill can claim a tab from a built-in, and an
   installed copy silently displacing the shipped skill's tab suggestion is a
   surprise nobody asked for.
-- **`toolPack` only where one fits.** Argus defines six packs
-  (`profiles`, `proxies`, `cookies`, `datasets`, `automations`,
-  `schedule`) and a skill gets tools by naming one — naming individual tools is
-  not possible by design. Six of the twelve briefs use a tool set that is not one
-  of those packs; their files carry no `toolPack`, so posting one as-is gives a
-  skill with documentation and navigation tools only. The brief is still the
-  useful part.
+- **`toolPack` only where one fits.** A skill gets its tools by naming one of
+  the packs Argus defines — naming individual tools is not possible by design,
+  so that a skill document can never grant itself a capability the code does not
+  already ship. Several briefs use a tool set that is not any one pack; their
+  files carry no `toolPack`, so posting one as-is gives a skill with
+  documentation and navigation tools only. The brief is still the useful part.
+  `skills/README.md` marks which is which, brief by brief.
 
 ## Links
 
