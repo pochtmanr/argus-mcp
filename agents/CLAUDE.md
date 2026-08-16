@@ -88,6 +88,7 @@ acting hours in code rather than by being asked nicely.
 - **Cookies**: `argus_assign_cookie_set`, `argus_unassign_cookie_set`, `argus_list_cookie_sets`, `argus_update_cookie_set`, `argus_trash_cookie_sets`, `argus_list_trashed_cookie_sets`, `argus_restore_cookie_sets`, `argus_purge_cookie_sets`
 - **Automations**: `argus_list_automations`, `argus_automation_schema`, `argus_get_automation`, `argus_create_automation`, `argus_update_automation`, `argus_delete_automation`, `argus_run_automation`, `argus_automation_runs`
 - **Schedule**: `argus_list_schedule_entries`, `argus_create_schedule_entry`, `argus_update_schedule_entry`, `argus_delete_schedule_entry`, `argus_schedule_history`, `argus_keep_awake`, `argus_set_keep_awake`, `argus_schedule_notifications`, `argus_set_schedule_notifications`
+- **Triggers**: `argus_list_event_triggers`, `argus_create_event_trigger`, `argus_update_event_trigger`, `argus_delete_event_trigger`
 - **Datasets**: `argus_list_datasets`, `argus_create_dataset`, `argus_update_dataset`, `argus_update_dataset_schema`, `argus_update_dataset_options`, `argus_sample_rows`, `argus_query_rows`, `argus_add_rows`, `argus_update_rows`, `argus_delete_rows`, `argus_trash_datasets`, `argus_list_trashed_datasets`, `argus_restore_datasets`, `argus_purge_datasets`
 - **Projects**: `argus_list_projects`, `argus_project_context`, `argus_delegate`
 - **Connectors**: `argus_list_connectors`, `argus_create_connector`, `argus_update_connector`, `argus_delete_connector`, `argus_test_connector`

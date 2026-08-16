@@ -28,7 +28,7 @@ This repository is the **documentation** for that server, not the server.
 
 | Path | What it is |
 | --- | --- |
-| [`docs/api-reference.md`](./docs/api-reference.md) | All 84 endpoints and 85 tools — paths, fields, curl examples, status codes. |
+| [`docs/api-reference.md`](./docs/api-reference.md) | All 88 endpoints and 89 tools — paths, fields, curl examples, status codes. |
 | [`docs/openapi.json`](./docs/openapi.json) | The same table as an OpenAPI 3.1 spec, for generating a client. |
 | [`docs/mcp-tools.md`](./docs/mcp-tools.md) | The tool list an MCP client receives, and which endpoint each one fronts. |
 | [`skills/`](./skills) | The briefs the in-app assistant runs on, as readable JSON. |
@@ -38,20 +38,21 @@ This repository is the **documentation** for that server, not the server.
 ## Quick start
 
 1. [Download Argus](https://www.browserargus.com/downloads) and open the launcher.
-2. Mint a key in the **API** tab. It is shown once.
+2. Mint a key in the **API** tab. It is shown once. Export it as
+   `ARGYS_API_TOKEN` — that is the name the launcher tells you to use and the
+   one the MCP server reads from the environment.
 3. Call it:
 
 ```sh
 curl -s "http://127.0.0.1:39219/v1/profiles" \
-  -H "Authorization: Bearer $ARGUS_KEY"
+  -H "Authorization: Bearer $ARGYS_API_TOKEN"
 ```
 
 The first call from a new client raises an approve-or-deny card in the launcher
 and blocks until you answer it.
 
-To drive it from a coding agent instead, connect an MCP client — Claude Code,
-Codex, Cursor, Gemini CLI, Windsurf, VS Code, Zed and others are supported — and
-the 85 tools appear on their own.
+To drive it from a coding agent instead, connect an MCP client — Claude Code, Codex, Cursor, Gemini CLI, Windsurf, VS Code, Zed, OpenClaw, Hive and others are supported —
+and the 89 tools appear on their own.
 
 ## About `skills/`
 
@@ -66,7 +67,7 @@ posting it creates *your own* custom skill:
 
 ```sh
 curl -X POST "http://127.0.0.1:39219/v1/skills/save" \
-  -H "Authorization: Bearer $ARGUS_KEY" \
+  -H "Authorization: Bearer $ARGYS_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d @skills/proxies.json
 ```

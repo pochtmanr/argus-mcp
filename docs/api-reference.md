@@ -5,7 +5,7 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 - Base URL: `http://127.0.0.1:39219`
 - Auth: `Authorization: Bearer <YOUR_API_KEY>`
 - Bodies: `Content-Type: application/json`
-- Surface: 84 endpoints, 85 agent tools
+- Surface: 88 endpoints, 89 agent tools
 
 ## Keys and approval
 
@@ -649,7 +649,7 @@ Create an automation. Steps are validated before anything is stored
 - MCP tool: `argus_create_automation`
 - Key scope: needs a key with no folder scope. Automations are shared across every folder and have none of their own, so a folder-scoped key may run them but may not author them.
 
-Create an automation from a list of steps. Call argus_automation_schema first for the step vocabulary. Steps are validated before anything is stored, and the error names the exact path that failed.
+Create an automation from a list of steps. Call argus_automation_schema first for the step vocabulary. Steps are validated before anything is stored, and the error names the exact path that failed. One step type makes this call wait on a human: a nodeScript step anywhere in the tree, including inside an if branch or a loop body, runs code on the user's own machine with the launcher's access to their files and network, so storing one asks them to approve it first and the call blocks until they answer. Nothing else here is gated -- an ordinary automation is written without a prompt.
 
 Fields:
 - `name` (string, required)
@@ -682,7 +682,7 @@ Change an automation's name, description, steps or wiring
 - MCP tool: `argus_update_automation`
 - Key scope: needs a key with no folder scope. Automations are shared across every folder and have none of their own, so a folder-scoped key may run them but may not author them.
 
-Change an existing automation. Only the fields you send are written; omitting steps leaves the step tree alone.
+Change an existing automation. Only the fields you send are written; omitting steps leaves the step tree alone. Sending a step tree that contains a nodeScript step -- code that runs on the user's own machine, at any depth, in a branch or a loop body -- asks them to approve the write first, and the call blocks until they answer. Omitting steps entirely never asks, because the tree that is already stored was approved when it landed.
 
 Fields:
 - `automationId` (string, required)
@@ -940,6 +940,91 @@ curl -X POST "http://127.0.0.1:39219/v1/schedule/notifications" \
   -H "Authorization: Bearer <YOUR_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{ "notifyFailures": true, "dailySummary": false }'
+```
+
+## Triggers
+
+A trigger fires an automation when something happens rather than at a time you set — an inbound webhook, a selector appearing or disappearing on a page a profile already has open, a domain's cookies changing, another run finishing, or a file landing in a watched folder. The clock-driven half is Schedule, above. Creating or re-pointing one needs a key with no folder scope and always asks the user to approve it, because a webhook trigger mints a URL that can start runs in the workspace. Like schedules, triggers fire only while the launcher is open.
+
+### GET /v1/event-triggers
+
+Every event trigger in the workspace
+
+- MCP tool: `argus_list_event_triggers`
+
+The workspace's event triggers: what each one watches, what it runs, whether it is enabled, and when it last fired. A trigger fires an automation on an EVENT rather than on the clock -- an inbound webhook, a CSS selector appearing or disappearing on a running profile's page, a profile's cookies changing for a domain, another run finishing, or a file landing in a watched folder. Distinct from argus_list_schedule_entries, which is the wall-clock calendar. Read this before updating one: an update replaces the whole config or the whole target rather than merging. Webhook URLs are NOT returned here -- the secret in one is a credential that can start runs, and the app shows it once when the trigger is created.
+
+```sh
+curl -X GET "http://127.0.0.1:39219/v1/event-triggers" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json"
+```
+
+### POST /v1/event-triggers/create
+
+Create an event trigger
+
+- MCP tool: `argus_create_event_trigger`
+- Key scope: needs a key with no folder scope. Automations are shared across every folder and have none of their own, so a folder-scoped key may run them but may not author them.
+
+Run an automation when something HAPPENS rather than at a set time. `kind` picks what to watch and decides the shape of `config`: 'webhook' takes {} and answers an inbound POST; 'page' takes {profileIds, selector, on} where on is 'appears' or 'disappears', and watches only profiles that are already open; 'cookie' takes {profileIds, domain} with a bare host like 'example.com'; 'cascade' takes {sourceAutomationId, on} where on lists any of ok, partial, failed, cancelled; 'file' takes {folder, glob} with a filename pattern such as '*.csv'. `target` is what runs: {kind:'automation', automationId, profileIds} -- an empty profileIds runs without a browser -- or {kind:'entry', entryId} to run a whole scheduled workflow. `cooldownMinutes` is the floor between two fires, at least 1 and 5 by default; a flapping selector or a retried webhook would otherwise be a run each time. A cascade that would loop back into itself is refused. Triggers fire only while the launcher is open, exactly like schedules. Always asks the user to approve: a webhook trigger mints a URL that can start runs in this workspace.
+
+Fields:
+- `name` (string, required) — What to call this trigger.
+- `kind` (string, required) — webhook, page, cookie, cascade or file. A trigger's kind cannot be changed later.
+- `config` (object, required) — The watch settings for this kind; the description above gives each shape. Webhook takes an empty object -- its secret is minted here and never sent over this API.
+- `target` (object, required) — What runs: {kind:'automation', automationId, profileIds} or {kind:'entry', entryId}. An empty profileIds is a browserless run.
+- `cooldownMinutes` (number) — Minimum minutes between two fires of this trigger, 1 to 1440. 5 when omitted.
+- `enabled` (boolean) — Whether it starts switched on. True when omitted.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/event-triggers/create" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "New leads dropped", "kind": "file", "config": { "folder": "/Users/me/Drop", "glob": "*.csv" }, "target": { "kind": "automation", "automationId": "<id>", "profileIds": [] } }'
+```
+
+### POST /v1/event-triggers/update
+
+Change an event trigger's watch settings, target or enabled state
+
+- MCP tool: `argus_update_event_trigger`
+- Key scope: needs a key with no folder scope. Automations are shared across every folder and have none of their own, so a folder-scoped key may run them but may not author them.
+
+Change an event trigger. Every field is optional and anything omitted is left alone -- but `config` and `target` each replace their whole value rather than merging, so read the trigger with argus_list_event_triggers first and send the complete new version. Switching `enabled` off is the way to pause a trigger without losing it: a webhook then refuses its own URL, and a file watcher is dropped. This never changes a webhook's secret -- rotating one is done in the app, because it breaks every URL already handed out. Always asks the user to approve: re-pointing a live webhook aims a URL somebody already holds at a different automation.
+
+Fields:
+- `triggerId` (string, required) — From argus_list_event_triggers.
+- `name` (string)
+- `enabled` (boolean)
+- `config` (object) — Replaces the whole watch config. Must fit the trigger's existing kind, which cannot be changed.
+- `target` (object) — Replaces the whole target.
+- `cooldownMinutes` (number) — Minimum minutes between two fires, 1 to 1440.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/event-triggers/update" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "triggerId": "<id>", "enabled": false }'
+```
+
+### POST /v1/event-triggers/delete
+
+Delete an event trigger
+
+- MCP tool: `argus_delete_event_trigger`
+- Key scope: needs a key with no folder scope. Automations are shared across every folder and have none of their own, so a folder-scoped key may run them but may not author them.
+
+Delete an event trigger. There is no Trash for triggers and no undo: the trigger and its whole fire history go, and a webhook's URL stops working immediately. The automation it named is untouched -- a trigger only points at one. To stop a trigger without losing it, send enabled: false to argus_update_event_trigger instead.
+
+Fields:
+- `triggerId` (string, required) — From argus_list_event_triggers.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/event-triggers/delete" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "triggerId": "<id>" }'
 ```
 
 ## Datasets
@@ -1224,6 +1309,8 @@ curl -X POST "http://127.0.0.1:39219/v1/datasets/purge" \
 ```
 
 ## Projects
+
+A project is a named piece of work and the profiles, proxies, cookie sets, automations and datasets that serve it, along with a brief and a set of rules kept on that machine. Every route here needs a key with no folder scope: a project deliberately spans folders, so honouring one would mean answering with half a project. Reading a single document is the one route with no agent tool — it backs an MCP resource instead, so a body is fetched only once a client has decided it wants that body.
 
 ### GET /v1/projects
 

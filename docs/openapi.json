@@ -3,7 +3,7 @@
   "info": {
     "title": "The Argus local API",
     "version": "1.0.0",
-    "summary": "84 endpoints for profiles, proxies, cookies, automations and schedules, 85 of them fronted by MCP tools.",
+    "summary": "88 endpoints for profiles, proxies, cookies, automations and schedules, 89 of them fronted by MCP tools.",
     "description": "This is a local API. It listens on loopback on the machine running Argus, and nothing off that machine can reach it. There is no hosted web API.\n\nThe server starts with the Argus launcher and stops with it. Keys are created in the launcher under the API tab, may be scoped to folders, and the first call from a new client raises an approve-or-deny prompt that holds the request until it is answered.\n\nGenerated from the launcher's own route table. The human version of this document is https://www.browserargus.com/api-reference, and the same content as Markdown is https://www.browserargus.com/api-reference.md.",
     "license": {
       "name": "MIT",
@@ -51,10 +51,15 @@
       "description": "A schedule entry is an ordered list of automations with a time on it — a different thing from the schedule an automation carries itself, which runs that one automation alone. Entries fire only while the launcher is open: a time it was closed for is recorded as missed and skipped, never caught up. Occurrences is the record of what ran, not the plan for what will."
     },
     {
+      "name": "Triggers",
+      "description": "A trigger fires an automation when something happens rather than at a time you set — an inbound webhook, a selector appearing or disappearing on a page a profile already has open, a domain's cookies changing, another run finishing, or a file landing in a watched folder. The clock-driven half is Schedule, above. Creating or re-pointing one needs a key with no folder scope and always asks the user to approve it, because a webhook trigger mints a URL that can start runs in the workspace. Like schedules, triggers fire only while the launcher is open."
+    },
+    {
       "name": "Datasets"
     },
     {
-      "name": "Projects"
+      "name": "Projects",
+      "description": "A project is a named piece of work and the profiles, proxies, cookie sets, automations and datasets that serve it, along with a brief and a set of rules kept on that machine. Every route here needs a key with no folder scope: a project deliberately spans folders, so honouring one would mean answering with half a project. Reading a single document is the one route with no agent tool — it backs an MCP resource instead, so a body is fetched only once a client has decided it wants that body."
     },
     {
       "name": "Connectors"
@@ -3932,7 +3937,7 @@
       "post": {
         "operationId": "argus_create_automation",
         "summary": "Create an automation. Steps are validated before anything is stored",
-        "description": "Create an automation. Steps are validated before anything is stored\n\nCreate an automation from a list of steps. Call argus_automation_schema first for the step vocabulary. Steps are validated before anything is stored, and the error names the exact path that failed.\n\nMCP tool: `argus_create_automation`.\n\nNeeds a key with no folder scope; a folder-scoped key is refused with 403.",
+        "description": "Create an automation. Steps are validated before anything is stored\n\nCreate an automation from a list of steps. Call argus_automation_schema first for the step vocabulary. Steps are validated before anything is stored, and the error names the exact path that failed. One step type makes this call wait on a human: a nodeScript step anywhere in the tree, including inside an if branch or a loop body, runs code on the user's own machine with the launcher's access to their files and network, so storing one asks them to approve it first and the call blocks until they answer. Nothing else here is gated -- an ordinary automation is written without a prompt.\n\nMCP tool: `argus_create_automation`.\n\nNeeds a key with no folder scope; a folder-scoped key is refused with 403.",
         "tags": [
           "Automations"
         ],
@@ -4123,7 +4128,7 @@
       "post": {
         "operationId": "argus_update_automation",
         "summary": "Change an automation's name, description, steps or wiring",
-        "description": "Change an automation's name, description, steps or wiring\n\nChange an existing automation. Only the fields you send are written; omitting steps leaves the step tree alone.\n\nMCP tool: `argus_update_automation`.\n\nNeeds a key with no folder scope; a folder-scoped key is refused with 403.",
+        "description": "Change an automation's name, description, steps or wiring\n\nChange an existing automation. Only the fields you send are written; omitting steps leaves the step tree alone. Sending a step tree that contains a nodeScript step -- code that runs on the user's own machine, at any depth, in a branch or a loop body -- asks them to approve the write first, and the call blocks until they answer. Omitting steps entirely never asks, because the tree that is already stored was approved when it landed.\n\nMCP tool: `argus_update_automation`.\n\nNeeds a key with no folder scope; a folder-scoped key is refused with 403.",
         "tags": [
           "Automations"
         ],
@@ -5720,6 +5725,505 @@
               "example": {
                 "notifyFailures": true,
                 "dailySummary": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/event-triggers": {
+      "get": {
+        "operationId": "argus_list_event_triggers",
+        "summary": "Every event trigger in the workspace",
+        "description": "Every event trigger in the workspace\n\nThe workspace's event triggers: what each one watches, what it runs, whether it is enabled, and when it last fired. A trigger fires an automation on an EVENT rather than on the clock -- an inbound webhook, a CSS selector appearing or disappearing on a running profile's page, a profile's cookies changing for a domain, another run finishing, or a file landing in a watched folder. Distinct from argus_list_schedule_entries, which is the wall-clock calendar. Read this before updating one: an update replaces the whole config or the whole target rather than merging. Webhook URLs are NOT returned here -- the secret in one is a credential that can start runs, and the app shows it once when the trigger is created.\n\nMCP tool: `argus_list_event_triggers`.",
+        "tags": [
+          "Triggers"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_list_event_triggers"
+      }
+    },
+    "/v1/event-triggers/create": {
+      "post": {
+        "operationId": "argus_create_event_trigger",
+        "summary": "Create an event trigger",
+        "description": "Create an event trigger\n\nRun an automation when something HAPPENS rather than at a set time. `kind` picks what to watch and decides the shape of `config`: 'webhook' takes {} and answers an inbound POST; 'page' takes {profileIds, selector, on} where on is 'appears' or 'disappears', and watches only profiles that are already open; 'cookie' takes {profileIds, domain} with a bare host like 'example.com'; 'cascade' takes {sourceAutomationId, on} where on lists any of ok, partial, failed, cancelled; 'file' takes {folder, glob} with a filename pattern such as '*.csv'. `target` is what runs: {kind:'automation', automationId, profileIds} -- an empty profileIds runs without a browser -- or {kind:'entry', entryId} to run a whole scheduled workflow. `cooldownMinutes` is the floor between two fires, at least 1 and 5 by default; a flapping selector or a retried webhook would otherwise be a run each time. A cascade that would loop back into itself is refused. Triggers fire only while the launcher is open, exactly like schedules. Always asks the user to approve: a webhook trigger mints a URL that can start runs in this workspace.\n\nMCP tool: `argus_create_event_trigger`.\n\nThis key is scoped to a folder, and event triggers are workspace-wide -- one can fire an automation on any profile. Use an unscoped key to create or change one.\n\nThis call blocks while an approve-or-deny card is shown in the launcher, and answers 403 if it is denied or allowed to lapse.",
+        "tags": [
+          "Triggers"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_create_event_trigger",
+        "x-approval": true,
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "What to call this trigger."
+                  },
+                  "kind": {
+                    "type": "string",
+                    "description": "webhook, page, cookie, cascade or file. A trigger's kind cannot be changed later."
+                  },
+                  "config": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "The watch settings for this kind; the description above gives each shape. Webhook takes an empty object -- its secret is minted here and never sent over this API."
+                  },
+                  "target": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "What runs: {kind:'automation', automationId, profileIds} or {kind:'entry', entryId}. An empty profileIds is a browserless run."
+                  },
+                  "cooldownMinutes": {
+                    "type": "number",
+                    "description": "Minimum minutes between two fires of this trigger, 1 to 1440. 5 when omitted."
+                  },
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Whether it starts switched on. True when omitted."
+                  }
+                },
+                "required": [
+                  "name",
+                  "kind",
+                  "config",
+                  "target"
+                ]
+              },
+              "example": {
+                "name": "New leads dropped",
+                "kind": "file",
+                "config": {
+                  "folder": "/Users/me/Drop",
+                  "glob": "*.csv"
+                },
+                "target": {
+                  "kind": "automation",
+                  "automationId": "<id>",
+                  "profileIds": []
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/event-triggers/update": {
+      "post": {
+        "operationId": "argus_update_event_trigger",
+        "summary": "Change an event trigger's watch settings, target or enabled state",
+        "description": "Change an event trigger's watch settings, target or enabled state\n\nChange an event trigger. Every field is optional and anything omitted is left alone -- but `config` and `target` each replace their whole value rather than merging, so read the trigger with argus_list_event_triggers first and send the complete new version. Switching `enabled` off is the way to pause a trigger without losing it: a webhook then refuses its own URL, and a file watcher is dropped. This never changes a webhook's secret -- rotating one is done in the app, because it breaks every URL already handed out. Always asks the user to approve: re-pointing a live webhook aims a URL somebody already holds at a different automation.\n\nMCP tool: `argus_update_event_trigger`.\n\nThis key is scoped to a folder, and event triggers are workspace-wide -- one can fire an automation on any profile. Use an unscoped key to create or change one.\n\nThis call blocks while an approve-or-deny card is shown in the launcher, and answers 403 if it is denied or allowed to lapse.",
+        "tags": [
+          "Triggers"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_update_event_trigger",
+        "x-approval": true,
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "triggerId": {
+                    "type": "string",
+                    "description": "From argus_list_event_triggers."
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "config": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Replaces the whole watch config. Must fit the trigger's existing kind, which cannot be changed."
+                  },
+                  "target": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Replaces the whole target."
+                  },
+                  "cooldownMinutes": {
+                    "type": "number",
+                    "description": "Minimum minutes between two fires, 1 to 1440."
+                  }
+                },
+                "required": [
+                  "triggerId"
+                ]
+              },
+              "example": {
+                "triggerId": "<id>",
+                "enabled": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/event-triggers/delete": {
+      "post": {
+        "operationId": "argus_delete_event_trigger",
+        "summary": "Delete an event trigger",
+        "description": "Delete an event trigger\n\nDelete an event trigger. There is no Trash for triggers and no undo: the trigger and its whole fire history go, and a webhook's URL stops working immediately. The automation it named is untouched -- a trigger only points at one. To stop a trigger without losing it, send enabled: false to argus_update_event_trigger instead.\n\nMCP tool: `argus_delete_event_trigger`.\n\nThis key is scoped to a folder, and event triggers are workspace-wide -- one can fire an automation on any profile. Use an unscoped key to create or change one.",
+        "tags": [
+          "Triggers"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_delete_event_trigger",
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "triggerId": {
+                    "type": "string",
+                    "description": "From argus_list_event_triggers."
+                  }
+                },
+                "required": [
+                  "triggerId"
+                ]
+              },
+              "example": {
+                "triggerId": "<id>"
               }
             }
           }

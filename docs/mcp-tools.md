@@ -1,6 +1,6 @@
 # Argus MCP tools
 
-85 tools, across 84 endpoints. This is the list an MCP client receives from `tools/list`; the full request and response detail for each one is in [api-reference.md](./api-reference.md).
+89 tools, across 88 endpoints. This is the list an MCP client receives from `tools/list`; the full request and response detail for each one is in [api-reference.md](./api-reference.md).
 
 This is a local API. It listens on loopback on the machine running Argus, and nothing off that machine can reach it. There is no hosted web API.
 
@@ -72,6 +72,15 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 | `argus_set_keep_awake` | `POST /v1/schedule/keep-awake` | Hold this computer awake so scheduled runs are not missed |
 | `argus_schedule_notifications` | `GET /v1/schedule/notifications` | Whether the signed-in user hears about their scheduled days |
 | `argus_set_schedule_notifications` | `POST /v1/schedule/notifications` | Turn the schedule's Telegram messages on or off |
+
+## Triggers
+
+| Tool | Endpoint | What it does |
+| --- | --- | --- |
+| `argus_list_event_triggers` | `GET /v1/event-triggers` | Every event trigger in the workspace |
+| `argus_create_event_trigger` | `POST /v1/event-triggers/create` | Create an event trigger |
+| `argus_update_event_trigger` | `POST /v1/event-triggers/update` | Change an event trigger's watch settings, target or enabled state |
+| `argus_delete_event_trigger` | `POST /v1/event-triggers/delete` | Delete an event trigger |
 
 ## Datasets
 
@@ -154,9 +163,21 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 | `argus_screenshot` | _CDP, no endpoint_ | Screenshot a page — JPEG by default, PNG on request |
 | `argus_eval` | _CDP, no endpoint_ | Evaluate a JavaScript expression in a page and return its value |
 
+## Resources
+
+The server advertises `resources` alongside `tools`, and serves one resource family: the documents that make up a project's brain — its brief, its rules, its notes and its runbooks.
+
+| | |
+| --- | --- |
+| URI | `argus://project/<id>/<path>` |
+| Listed by | `resources/list` |
+| Read by | `resources/read` |
+
+`argus_list_projects` and `argus_project_context` give you a project's document *index* — the titles and paths, which is what belongs in a prompt. A body is fetched one at a time, as a resource, once you have decided you want that body. That is why `GET /v1/projects/{id}/docs/{path}` has no tool of its own: it is the same document, and giving it one would invite an agent to pull a hundred notes into context to find the one it needed.
+
 ## Endpoints with no tool
 
-4 routes are reachable over HTTP only, on purpose. An agent cannot call them however plainly they are documented.
+4 routes are reachable over HTTP only, on purpose. An agent cannot call them however plainly they are documented — with the one exception noted above: the project-document route is reached as a resource rather than a tool.
 
 - `POST /v1/cookies/bulk-match` — Match exported cookie files in a folder to profiles by name
 - `POST /v1/cookies/push-local` — Attach a cookie file on disk to one profile

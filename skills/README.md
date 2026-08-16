@@ -17,7 +17,7 @@ own custom skill rather than overwriting a built-in.
 | [`cookies.json`](./cookies.json) | `cookies` pack | Explain cookie import/export and assign cookie sets to profiles. |
 | [`dataset-organizer.json`](./dataset-organizer.json) | `datasets` pack | Inspect, clean, dedupe, and edit datasets collected in the Data tab. |
 | [`automations.json`](./automations.json) | `automations` pack | Explain, build, edit, delete and run automations from chat. |
-| [`schedule.json`](./schedule.json) | `schedule` pack | Read the calendar and set up workflows that run at a time you pick. |
+| [`schedule.json`](./schedule.json) | `schedule` pack | Set up workflows that run at a time you pick, or when something happens. |
 | [`session-hygiene.json`](./session-hygiene.json) | _docs and navigation only_ | Fix cookie sets and proxies shared across too many profiles. |
 | [`troubleshooter.json`](./troubleshooter.json) | _docs and navigation only_ | Diagnose a real failure from its actual error text and name the fix. |
 | [`data-collection.json`](./data-collection.json) | _docs and navigation only_ | Plan how a site's data lands in a dataset, and build the collector that fills it. |
