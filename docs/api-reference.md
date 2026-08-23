@@ -5,7 +5,7 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 - Base URL: `http://127.0.0.1:39219`
 - Auth: `Authorization: Bearer <YOUR_API_KEY>`
 - Bodies: `Content-Type: application/json`
-- Surface: 88 endpoints, 89 agent tools
+- Surface: 89 endpoints, 98 agent tools
 
 ## Keys and approval
 
@@ -273,6 +273,25 @@ curl -X POST "http://127.0.0.1:39219/v1/profiles/update-fingerprint" \
   -H "Authorization: Bearer <YOUR_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{ "profileId": "<id>", "fingerprint": { "canvas": "Noise" } }'
+```
+
+### POST /v1/profiles/fingerprint-check
+
+Check a running profile's fingerprint
+
+- MCP tool: `argus_fingerprint_check`
+
+Check what a page inside a running profile actually sees about the browser, and compare it against the identity the launcher declared for that profile. Reports per-check results -- WebRTC candidates, timezone, language, user agent, platform, screen, hardware, WebGL strings, noise hashes -- with a score and a verdict. What this can and cannot tell you: it measures what a page can see and compares it against what was declared, so a pass means the page-visible identity is COHERENT with the declared identity. It cannot verify the browser's spoofing internals, and it is not proof that a site will not detect the profile. The profile must already be open AND have been launched with a debugging port; a profile opened by hand usually has neither, and the reply says which of the two is missing rather than failing. `network: true` makes ONE outbound request from inside the profile (through its proxy) to an IP echo, and configures a STUN server so a reflexive WebRTC candidate can exist to be caught -- the default makes no outbound request at all.
+
+Fields:
+- `profileId` (string, required) — From argus_list_profiles. The profile must be open with a debugging port -- launch it through argus_launch_profile if it is not.
+- `network` (boolean) — Opt in to the two probes that touch the network: a STUN server for reflexive ICE candidates, and one request to an IP echo through the profile's own proxy. Defaults to false, which makes no outbound request at all. Send true only when the exit IP or a WebRTC srflx leak is the question being asked -- it spends metered proxy bandwidth and puts one more request in that profile's history.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/profiles/fingerprint-check" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "profileId": "<id>", "network": false }'
 ```
 
 ## Proxies
@@ -1388,7 +1407,7 @@ The workspace's connectors, and the field list of every kind
 
 - MCP tool: `argus_list_connectors`
 
-The AI, message and data connectors this workspace has, and the catalogue of kinds one can be created from. Call this before writing a notify, aiPrompt, aiCheck, aiAgent, saveRows or loadRows step, or setting notifyConnectorId -- those fields take an id from here and there is no other way to learn one. A step must name a connector of the matching category: 'ai' for the AI steps and an aiAgent's chat model, 'message' for notify and an agent's message or approval tools, 'data' for saveRows, loadRows and an agent's data or vector tools. Every connector carries its stored `config`, credentials included -- an API key reads back everything it can write, so treat a key as equivalent to the credentials behind it.
+The AI, message, data and captcha connectors this workspace has, and the catalogue of kinds one can be created from. Call this before writing a notify, aiPrompt, aiCheck, aiAgent, saveRows, loadRows or solveCaptcha step, or setting notifyConnectorId -- those fields take an id from here and there is no other way to learn one. A step must name a connector of the matching category: 'ai' for the AI steps and an aiAgent's chat model, 'message' for notify and an agent's message or approval tools, 'data' for saveRows, loadRows and an agent's data or vector tools, 'captcha' for solveCaptcha. Every connector carries its stored `config`, credentials included -- an API key reads back everything it can write, so treat a key as equivalent to the credentials behind it.
 
 ```sh
 curl -X GET "http://127.0.0.1:39219/v1/connectors" \
@@ -1407,7 +1426,7 @@ Add a connector -- a Telegram bot, a Slack or Discord webhook, WhatsApp, SMTP, a
 
 Fields:
 - `name` (string, required) — What the connector is called in the app.
-- `kind` (string, required) — A messaging kind (telegram, slack, discord, whatsapp, smtp), a data kind (supabase, postgres, redis, firestore, sheets, notion, airtable, file) or an AI kind. See the `kinds` block of argus_list_connectors. The category follows from the kind and cannot be set.
+- `kind` (string, required) — A messaging kind (telegram, slack, discord, whatsapp, smtp), a data kind (supabase, postgres, redis, firestore, sheets, notion, airtable, file), a captcha kind (2captcha, capmonster) or an AI kind. See the `kinds` block of argus_list_connectors. The category follows from the kind and cannot be set.
 - `config` (object) — The kind's fields, as a flat object of strings. Missing required fields are a 400 naming each one.
 - `isDefault` (boolean) — Make this the default for its category, used by steps that name no connector. The first connector in a category is the default whether or not this is sent.
 
@@ -1466,7 +1485,7 @@ Send a real test message, or a one-word AI completion
 - MCP tool: `argus_test_connector`
 - Key scope: needs a key with no folder scope. Automations are shared across every folder and have none of their own, so a folder-scoped key may run them but may not author them.
 
-Prove a connector works: a message connector sends a real test message, an AI connector asks for a one-word completion, a data connector performs the smallest read the service offers and never writes. Reports the service's own error text when it fails, which is usually the whole diagnosis. Do this after creating one rather than waiting for a run to fail. Note that a data connector passing only proves it can connect and read -- not that a save will be permitted.
+Prove a connector works: a message connector sends a real test message, an AI connector asks for a one-word completion, a data connector performs the smallest read the service offers and never writes, and a captcha connector reads its account balance and solves nothing. Reports the service's own error text when it fails, which is usually the whole diagnosis. Do this after creating one rather than waiting for a run to fail. Note that a data connector passing only proves it can connect and read -- not that a save will be permitted.
 
 Fields:
 - `connectorId` (string, required)
@@ -1736,6 +1755,105 @@ curl -X POST "http://127.0.0.1:39219/v1/skills/delete" \
 ## Driving a page
 
 Five tools with no endpoint behind them. They attach to a profile that is already open and speak to the page directly, which is how an agent reads a page, clicks through it and takes a screenshot.
+
+### argus_page_snapshot (MCP tool)
+
+The interactive elements on a page, each with a selector to act on it
+
+- No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.
+
+Fields:
+- `profileId` (string, required) — The running profile whose active page to describe.
+- `root` (string) — A CSS selector to scope the snapshot to one container. Use this on a page with hundreds of controls.
+- `maxElements` (number) — How many elements to return. Defaults to 60.
+
+### argus_click (MCP tool)
+
+Click an element, or a point, in a running profile's page
+
+- No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.
+
+Fields:
+- `profileId` (string, required) — The running profile to click in.
+- `selector` (string) — A CSS selector. From argus_page_snapshot.
+- `nth` (number) — Which match, when the selector is not unique. Zero-based.
+- `x` (number) — Viewport x, for content with no element to name.
+- `y` (number) — Viewport y, for content with no element to name.
+
+### argus_type (MCP tool)
+
+Type into a field in a running profile's page
+
+- No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.
+
+Fields:
+- `profileId` (string, required) — The running profile to type in.
+- `selector` (string, required) — The field to type into. From argus_page_snapshot.
+- `text` (string, required) — The text to type.
+- `clear` (boolean) — Empty the field first. Defaults to true.
+- `delayMs` (number) — Per-key delay. Set this to send real key events instead of one paste-shaped insert.
+- `pressEnter` (boolean) — Press Enter afterwards.
+
+### argus_press_key (MCP tool)
+
+Press a single key in a running profile's page
+
+- No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.
+
+Fields:
+- `profileId` (string, required) — The running profile to press a key in.
+- `key` (string, required) — Enter, Tab, Escape, Backspace, Delete, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Home, End, PageUp, PageDown, or a single character.
+- `selector` (string) — Focus this element first.
+
+### argus_scroll (MCP tool)
+
+Scroll a running profile's page
+
+- No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.
+
+Fields:
+- `profileId` (string, required) — The running profile to scroll.
+- `to` (string) — top or bottom.
+- `by` (number) — Scroll by this many pixels instead.
+- `selector` (string) — Scroll this element into view instead.
+
+### argus_wait_for (MCP tool)
+
+Wait until a page reaches a condition
+
+- No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.
+
+Fields:
+- `profileId` (string, required) — The running profile to wait on.
+- `selector` (string) — Wait until this appears.
+- `selectorGone` (string) — Wait until this disappears.
+- `text` (string) — Wait until the page contains this text.
+- `url` (string) — Wait until the URL contains this.
+- `timeoutMs` (number) — How long to wait. Defaults to 15000, capped at 120000.
+
+### argus_extract (MCP tool)
+
+Read values out of a running profile's page
+
+- No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.
+
+Fields:
+- `profileId` (string, required) — The running profile to read from.
+- `selector` (string, required) — What to read. From argus_page_snapshot.
+- `what` (string) — text, html, value or attr. Defaults to text.
+- `attr` (string) — Which attribute, when what is attr.
+- `all` (boolean) — Return every match rather than the first.
+
+### argus_select_option (MCP tool)
+
+Choose an option in a dropdown
+
+- No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.
+
+Fields:
+- `profileId` (string, required) — The running profile whose dropdown to set.
+- `selector` (string, required) — The select element. From argus_page_snapshot.
+- `value` (string, required) — The option's value, or its visible label.
 
 ### argus_list_tabs (MCP tool)
 

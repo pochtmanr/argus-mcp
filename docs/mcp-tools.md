@@ -1,6 +1,6 @@
 # Argus MCP tools
 
-89 tools, across 88 endpoints. This is the list an MCP client receives from `tools/list`; the full request and response detail for each one is in [api-reference.md](./api-reference.md).
+98 tools, across 89 endpoints. This is the list an MCP client receives from `tools/list`; the full request and response detail for each one is in [api-reference.md](./api-reference.md).
 
 This is a local API. It listens on loopback on the machine running Argus, and nothing off that machine can reach it. There is no hosted web API.
 
@@ -21,6 +21,7 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 | `argus_close_profile` | `POST /v1/profiles/close-automation` | Close a session this key opened |
 | `argus_delete_profile` | `POST /v1/profiles/delete` | Move a profile to Trash (permanent: true to purge; the tool only soft-deletes) |
 | `argus_update_fingerprint` | `POST /v1/profiles/update-fingerprint` | Re-roll or override a profile's fingerprint |
+| `argus_fingerprint_check` | `POST /v1/profiles/fingerprint-check` | Check a running profile's fingerprint |
 
 ## Proxies
 
@@ -157,6 +158,14 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 
 | Tool | Endpoint | What it does |
 | --- | --- | --- |
+| `argus_page_snapshot` | _CDP, no endpoint_ | The interactive elements on a page, each with a selector to act on it |
+| `argus_click` | _CDP, no endpoint_ | Click an element, or a point, in a running profile's page |
+| `argus_type` | _CDP, no endpoint_ | Type into a field in a running profile's page |
+| `argus_press_key` | _CDP, no endpoint_ | Press a single key in a running profile's page |
+| `argus_scroll` | _CDP, no endpoint_ | Scroll a running profile's page |
+| `argus_wait_for` | _CDP, no endpoint_ | Wait until a page reaches a condition |
+| `argus_extract` | _CDP, no endpoint_ | Read values out of a running profile's page |
+| `argus_select_option` | _CDP, no endpoint_ | Choose an option in a dropdown |
 | `argus_list_tabs` | _CDP, no endpoint_ | List the open pages in a running profile |
 | `argus_navigate` | _CDP, no endpoint_ | Point a page at a URL and wait for it to settle |
 | `argus_read_page` | _CDP, no endpoint_ | Read a page's visible text, whole or by CSS selector |

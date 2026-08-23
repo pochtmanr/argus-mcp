@@ -3,7 +3,7 @@
   "info": {
     "title": "The Argus local API",
     "version": "1.0.0",
-    "summary": "88 endpoints for profiles, proxies, cookies, automations and schedules, 89 of them fronted by MCP tools.",
+    "summary": "89 endpoints for profiles, proxies, cookies, automations and schedules, 98 of them fronted by MCP tools.",
     "description": "This is a local API. It listens on loopback on the machine running Argus, and nothing off that machine can reach it. There is no hosted web API.\n\nThe server starts with the Argus launcher and stops with it. Keys are created in the launcher under the API tab, may be scoped to folders, and the first call from a new client raises an approve-or-deny prompt that holds the request until it is answered.\n\nGenerated from the launcher's own route table. The human version of this document is https://www.browserargus.com/api-reference, and the same content as Markdown is https://www.browserargus.com/api-reference.md.",
     "license": {
       "name": "MIT",
@@ -1669,6 +1669,126 @@
                 "fingerprint": {
                   "canvas": "Noise"
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/profiles/fingerprint-check": {
+      "post": {
+        "operationId": "argus_fingerprint_check",
+        "summary": "Check a running profile's fingerprint",
+        "description": "Check a running profile's fingerprint\n\nCheck what a page inside a running profile actually sees about the browser, and compare it against the identity the launcher declared for that profile. Reports per-check results -- WebRTC candidates, timezone, language, user agent, platform, screen, hardware, WebGL strings, noise hashes -- with a score and a verdict. What this can and cannot tell you: it measures what a page can see and compares it against what was declared, so a pass means the page-visible identity is COHERENT with the declared identity. It cannot verify the browser's spoofing internals, and it is not proof that a site will not detect the profile. The profile must already be open AND have been launched with a debugging port; a profile opened by hand usually has neither, and the reply says which of the two is missing rather than failing. `network: true` makes ONE outbound request from inside the profile (through its proxy) to an IP echo, and configures a STUN server so a reflexive WebRTC candidate can exist to be caught -- the default makes no outbound request at all.\n\nMCP tool: `argus_fingerprint_check`.",
+        "tags": [
+          "Profiles"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_fingerprint_check",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileId": {
+                    "type": "string",
+                    "description": "From argus_list_profiles. The profile must be open with a debugging port -- launch it through argus_launch_profile if it is not."
+                  },
+                  "network": {
+                    "type": "boolean",
+                    "description": "Opt in to the two probes that touch the network: a STUN server for reflexive ICE candidates, and one request to an IP echo through the profile's own proxy. Defaults to false, which makes no outbound request at all. Send true only when the exit IP or a WebRTC srflx leak is the question being asked -- it spends metered proxy bandwidth and puts one more request in that profile's history."
+                  }
+                },
+                "required": [
+                  "profileId"
+                ]
+              },
+              "example": {
+                "profileId": "<id>",
+                "network": false
               }
             }
           }
@@ -8447,7 +8567,7 @@
       "get": {
         "operationId": "argus_list_connectors",
         "summary": "The workspace's connectors, and the field list of every kind",
-        "description": "The workspace's connectors, and the field list of every kind\n\nThe AI, message and data connectors this workspace has, and the catalogue of kinds one can be created from. Call this before writing a notify, aiPrompt, aiCheck, aiAgent, saveRows or loadRows step, or setting notifyConnectorId -- those fields take an id from here and there is no other way to learn one. A step must name a connector of the matching category: 'ai' for the AI steps and an aiAgent's chat model, 'message' for notify and an agent's message or approval tools, 'data' for saveRows, loadRows and an agent's data or vector tools. Every connector carries its stored `config`, credentials included -- an API key reads back everything it can write, so treat a key as equivalent to the credentials behind it.\n\nMCP tool: `argus_list_connectors`.",
+        "description": "The workspace's connectors, and the field list of every kind\n\nThe AI, message, data and captcha connectors this workspace has, and the catalogue of kinds one can be created from. Call this before writing a notify, aiPrompt, aiCheck, aiAgent, saveRows, loadRows or solveCaptcha step, or setting notifyConnectorId -- those fields take an id from here and there is no other way to learn one. A step must name a connector of the matching category: 'ai' for the AI steps and an aiAgent's chat model, 'message' for notify and an agent's message or approval tools, 'data' for saveRows, loadRows and an agent's data or vector tools, 'captcha' for solveCaptcha. Every connector carries its stored `config`, credentials included -- an API key reads back everything it can write, so treat a key as equivalent to the credentials behind it.\n\nMCP tool: `argus_list_connectors`.",
         "tags": [
           "Connectors"
         ],
@@ -8641,7 +8761,7 @@
                   },
                   "kind": {
                     "type": "string",
-                    "description": "A messaging kind (telegram, slack, discord, whatsapp, smtp), a data kind (supabase, postgres, redis, firestore, sheets, notion, airtable, file) or an AI kind. See the `kinds` block of argus_list_connectors. The category follows from the kind and cannot be set."
+                    "description": "A messaging kind (telegram, slack, discord, whatsapp, smtp), a data kind (supabase, postgres, redis, firestore, sheets, notion, airtable, file), a captcha kind (2captcha, capmonster) or an AI kind. See the `kinds` block of argus_list_connectors. The category follows from the kind and cannot be set."
                   },
                   "config": {
                     "type": "object",
@@ -8920,7 +9040,7 @@
       "post": {
         "operationId": "argus_test_connector",
         "summary": "Send a real test message, or a one-word AI completion",
-        "description": "Send a real test message, or a one-word AI completion\n\nProve a connector works: a message connector sends a real test message, an AI connector asks for a one-word completion, a data connector performs the smallest read the service offers and never writes. Reports the service's own error text when it fails, which is usually the whole diagnosis. Do this after creating one rather than waiting for a run to fail. Note that a data connector passing only proves it can connect and read -- not that a save will be permitted.\n\nMCP tool: `argus_test_connector`.\n\nNeeds a key with no folder scope; a folder-scoped key is refused with 403.",
+        "description": "Send a real test message, or a one-word AI completion\n\nProve a connector works: a message connector sends a real test message, an AI connector asks for a one-word completion, a data connector performs the smallest read the service offers and never writes, and a captcha connector reads its account balance and solves nothing. Reports the service's own error text when it fails, which is usually the whole diagnosis. Do this after creating one rather than waiting for a run to fail. Note that a data connector passing only proves it can connect and read -- not that a save will be permitted.\n\nMCP tool: `argus_test_connector`.\n\nNeeds a key with no folder scope; a folder-scoped key is refused with 403.",
         "tags": [
           "Connectors"
         ],
@@ -10624,6 +10744,264 @@
     }
   },
   "x-mcp-session-tools": [
+    {
+      "name": "argus_page_snapshot",
+      "group": "Driving a page",
+      "summary": "The interactive elements on a page, each with a selector to act on it",
+      "description": "No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "description": "The running profile whose active page to describe."
+          },
+          "root": {
+            "type": "string",
+            "description": "A CSS selector to scope the snapshot to one container. Use this on a page with hundreds of controls."
+          },
+          "maxElements": {
+            "type": "number",
+            "description": "How many elements to return. Defaults to 60."
+          }
+        },
+        "required": [
+          "profileId"
+        ]
+      }
+    },
+    {
+      "name": "argus_click",
+      "group": "Driving a page",
+      "summary": "Click an element, or a point, in a running profile's page",
+      "description": "No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "description": "The running profile to click in."
+          },
+          "selector": {
+            "type": "string",
+            "description": "A CSS selector. From argus_page_snapshot."
+          },
+          "nth": {
+            "type": "number",
+            "description": "Which match, when the selector is not unique. Zero-based."
+          },
+          "x": {
+            "type": "number",
+            "description": "Viewport x, for content with no element to name."
+          },
+          "y": {
+            "type": "number",
+            "description": "Viewport y, for content with no element to name."
+          }
+        },
+        "required": [
+          "profileId"
+        ]
+      }
+    },
+    {
+      "name": "argus_type",
+      "group": "Driving a page",
+      "summary": "Type into a field in a running profile's page",
+      "description": "No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "description": "The running profile to type in."
+          },
+          "selector": {
+            "type": "string",
+            "description": "The field to type into. From argus_page_snapshot."
+          },
+          "text": {
+            "type": "string",
+            "description": "The text to type."
+          },
+          "clear": {
+            "type": "boolean",
+            "description": "Empty the field first. Defaults to true."
+          },
+          "delayMs": {
+            "type": "number",
+            "description": "Per-key delay. Set this to send real key events instead of one paste-shaped insert."
+          },
+          "pressEnter": {
+            "type": "boolean",
+            "description": "Press Enter afterwards."
+          }
+        },
+        "required": [
+          "profileId",
+          "selector",
+          "text"
+        ]
+      }
+    },
+    {
+      "name": "argus_press_key",
+      "group": "Driving a page",
+      "summary": "Press a single key in a running profile's page",
+      "description": "No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "description": "The running profile to press a key in."
+          },
+          "key": {
+            "type": "string",
+            "description": "Enter, Tab, Escape, Backspace, Delete, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Home, End, PageUp, PageDown, or a single character."
+          },
+          "selector": {
+            "type": "string",
+            "description": "Focus this element first."
+          }
+        },
+        "required": [
+          "profileId",
+          "key"
+        ]
+      }
+    },
+    {
+      "name": "argus_scroll",
+      "group": "Driving a page",
+      "summary": "Scroll a running profile's page",
+      "description": "No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "description": "The running profile to scroll."
+          },
+          "to": {
+            "type": "string",
+            "description": "top or bottom."
+          },
+          "by": {
+            "type": "number",
+            "description": "Scroll by this many pixels instead."
+          },
+          "selector": {
+            "type": "string",
+            "description": "Scroll this element into view instead."
+          }
+        },
+        "required": [
+          "profileId"
+        ]
+      }
+    },
+    {
+      "name": "argus_wait_for",
+      "group": "Driving a page",
+      "summary": "Wait until a page reaches a condition",
+      "description": "No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "description": "The running profile to wait on."
+          },
+          "selector": {
+            "type": "string",
+            "description": "Wait until this appears."
+          },
+          "selectorGone": {
+            "type": "string",
+            "description": "Wait until this disappears."
+          },
+          "text": {
+            "type": "string",
+            "description": "Wait until the page contains this text."
+          },
+          "url": {
+            "type": "string",
+            "description": "Wait until the URL contains this."
+          },
+          "timeoutMs": {
+            "type": "number",
+            "description": "How long to wait. Defaults to 15000, capped at 120000."
+          }
+        },
+        "required": [
+          "profileId"
+        ]
+      }
+    },
+    {
+      "name": "argus_extract",
+      "group": "Driving a page",
+      "summary": "Read values out of a running profile's page",
+      "description": "No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "description": "The running profile to read from."
+          },
+          "selector": {
+            "type": "string",
+            "description": "What to read. From argus_page_snapshot."
+          },
+          "what": {
+            "type": "string",
+            "description": "text, html, value or attr. Defaults to text."
+          },
+          "attr": {
+            "type": "string",
+            "description": "Which attribute, when what is attr."
+          },
+          "all": {
+            "type": "boolean",
+            "description": "Return every match rather than the first."
+          }
+        },
+        "required": [
+          "profileId",
+          "selector"
+        ]
+      }
+    },
+    {
+      "name": "argus_select_option",
+      "group": "Driving a page",
+      "summary": "Choose an option in a dropdown",
+      "description": "No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "description": "The running profile whose dropdown to set."
+          },
+          "selector": {
+            "type": "string",
+            "description": "The select element. From argus_page_snapshot."
+          },
+          "value": {
+            "type": "string",
+            "description": "The option's value, or its visible label."
+          }
+        },
+        "required": [
+          "profileId",
+          "selector",
+          "value"
+        ]
+      }
+    },
     {
       "name": "argus_list_tabs",
       "group": "Driving a page",

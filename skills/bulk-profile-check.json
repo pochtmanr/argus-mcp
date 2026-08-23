@@ -11,6 +11,7 @@
     "concepts/datasets",
     "concepts/automation-recipes",
     "concepts/access-check",
+    "concepts/fingerprint-check",
     "pages/data",
     "pages/profiles"
   ]

@@ -83,7 +83,7 @@ acting hours in code rather than by being asked nicely.
 
 ## The tools
 
-- **Profiles**: `argus_list_profiles`, `argus_get_profile`, `argus_create_profile`, `argus_update_profile`, `argus_profile_notes`, `argus_add_profile_note`, `argus_assign_proxy`, `argus_sharing_report`, `argus_launch_profile`, `argus_profile_session`, `argus_close_profile`, `argus_delete_profile`, `argus_update_fingerprint`
+- **Profiles**: `argus_list_profiles`, `argus_get_profile`, `argus_create_profile`, `argus_update_profile`, `argus_profile_notes`, `argus_add_profile_note`, `argus_assign_proxy`, `argus_sharing_report`, `argus_launch_profile`, `argus_profile_session`, `argus_close_profile`, `argus_delete_profile`, `argus_update_fingerprint`, `argus_fingerprint_check`
 - **Proxies**: `argus_list_proxies`, `argus_create_proxy`, `argus_update_proxy`, `argus_check_proxy`, `argus_delete_proxy`, `argus_reimport_proxies`
 - **Cookies**: `argus_assign_cookie_set`, `argus_unassign_cookie_set`, `argus_list_cookie_sets`, `argus_update_cookie_set`, `argus_trash_cookie_sets`, `argus_list_trashed_cookie_sets`, `argus_restore_cookie_sets`, `argus_purge_cookie_sets`
 - **Automations**: `argus_list_automations`, `argus_automation_schema`, `argus_get_automation`, `argus_create_automation`, `argus_update_automation`, `argus_delete_automation`, `argus_run_automation`, `argus_automation_runs`
@@ -96,7 +96,7 @@ acting hours in code rather than by being asked nicely.
 - **Notifications**: `argus_telegram_status`, `argus_set_telegram_pref`, `argus_set_telegram_bot`
 - **Tables**: `argus_table_columns`, `argus_set_table_columns`
 - **Skills**: `argus_skills_schema`, `argus_list_skills`, `argus_get_skill`, `argus_save_skill`, `argus_delete_skill`
-- **Driving a page**: `argus_list_tabs`, `argus_navigate`, `argus_read_page`, `argus_screenshot`, `argus_eval`
+- **Driving a page**: `argus_page_snapshot`, `argus_click`, `argus_type`, `argus_press_key`, `argus_scroll`, `argus_wait_for`, `argus_extract`, `argus_select_option`, `argus_list_tabs`, `argus_navigate`, `argus_read_page`, `argus_screenshot`, `argus_eval`
 
 Full request and response detail: https://www.browserargus.com/api-reference.md
 Machine-readable spec: https://www.browserargus.com/openapi.json
