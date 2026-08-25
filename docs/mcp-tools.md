@@ -1,6 +1,6 @@
 # Argus MCP tools
 
-98 tools, across 89 endpoints. This is the list an MCP client receives from `tools/list`; the full request and response detail for each one is in [api-reference.md](./api-reference.md).
+134 tools, across 124 endpoints. This is the list an MCP client receives from `tools/list`; the full request and response detail for each one is in [api-reference.md](./api-reference.md).
 
 This is a local API. It listens on loopback on the machine running Argus, and nothing off that machine can reach it. There is no hosted web API.
 
@@ -22,6 +22,10 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 | `argus_delete_profile` | `POST /v1/profiles/delete` | Move a profile to Trash (permanent: true to purge; the tool only soft-deletes) |
 | `argus_update_fingerprint` | `POST /v1/profiles/update-fingerprint` | Re-roll or override a profile's fingerprint |
 | `argus_fingerprint_check` | `POST /v1/profiles/fingerprint-check` | Check a running profile's fingerprint |
+| `argus_trash_profiles` | `POST /v1/profiles/trash` | Move profiles to the trash |
+| `argus_list_trashed_profiles` | `GET /v1/profiles/trashed` | Profiles currently in the trash |
+| `argus_restore_profiles` | `POST /v1/profiles/restore` | Restore profiles from the trash |
+| `argus_purge_profiles` | `POST /v1/profiles/purge` | Delete trashed profiles permanently |
 
 ## Proxies
 
@@ -59,6 +63,8 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 | `argus_delete_automation` | `POST /v1/automations/delete` | Move an automation to Trash. It stops running on launch and on its schedule |
 | `argus_run_automation` | `POST /v1/automations/run` | Run an automation against a profile, launching it if needed |
 | `argus_automation_runs` | `POST /v1/automations/runs` | Recent runs of one automation, with status and errors |
+| `argus_search_automations` | `POST /v1/automations/search` | Find automations by name, step or connector |
+| `argus_automation_summary` | `POST /v1/automations/summary` | What one automation does, without its full document |
 
 ## Schedule
 
@@ -73,6 +79,7 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 | `argus_set_keep_awake` | `POST /v1/schedule/keep-awake` | Hold this computer awake so scheduled runs are not missed |
 | `argus_schedule_notifications` | `GET /v1/schedule/notifications` | Whether the signed-in user hears about their scheduled days |
 | `argus_set_schedule_notifications` | `POST /v1/schedule/notifications` | Turn the schedule's Telegram messages on or off |
+| `argus_schedule_day` | `POST /v1/schedule/day` | One day of the calendar |
 
 ## Triggers
 
@@ -82,6 +89,7 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 | `argus_create_event_trigger` | `POST /v1/event-triggers/create` | Create an event trigger |
 | `argus_update_event_trigger` | `POST /v1/event-triggers/update` | Change an event trigger's watch settings, target or enabled state |
 | `argus_delete_event_trigger` | `POST /v1/event-triggers/delete` | Delete an event trigger |
+| `argus_trigger_history` | `POST /v1/event-triggers/history` | What has fired recently |
 
 ## Datasets
 
@@ -101,6 +109,7 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 | `argus_list_trashed_datasets` | `GET /v1/datasets/trashed` | The datasets currently in Trash |
 | `argus_restore_datasets` | `POST /v1/datasets/restore` | Bring datasets back out of Trash |
 | `argus_purge_datasets` | `POST /v1/datasets/purge` | Permanently delete datasets from Trash |
+| `argus_dedupe_rows` | `POST /v1/datasets/rows/dedupe` | Remove duplicate rows |
 
 ## Projects
 
@@ -109,6 +118,14 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 | `argus_list_projects` | `GET /v1/projects` | The workspace's projects, what each holds, and the index of its brain |
 | `argus_project_context` | `GET /v1/projects/{id}/context` | One project's goal, brief and rules, plus the titles of its other documents |
 | `argus_delegate` | `POST /v1/projects/{id}/delegate` | Hand a goal to Argus's own orchestrator, inside a project's context |
+| `argus_create_project` | `POST /v1/projects/create` | Start a project |
+| `argus_add_to_project` | `POST /v1/projects/add` | Put records into a project |
+| `argus_remove_from_project` | `POST /v1/projects/remove` | Take records out of a project |
+| `argus_read_project_doc` | `POST /v1/projects/doc/read` | Read one project document |
+| `argus_write_project_doc` | `POST /v1/projects/doc/write` | Write a project document |
+| `argus_delete_project_doc` | `POST /v1/projects/doc/delete` | Delete a project document |
+| `argus_make_plan` | `POST /v1/orchestration/plan` | Lay out a multi-step plan |
+| `argus_delegate_many` | `POST /v1/orchestration/delegate-many` | Hand several goals to subagents at once |
 
 ## Connectors
 
@@ -158,6 +175,10 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 
 | Tool | Endpoint | What it does |
 | --- | --- | --- |
+| `argus_switch_tab` | `POST /v1/page/switch-tab` | Bring one of a profile's tabs to the front |
+| `argus_new_tab` | `POST /v1/page/new-tab` | Open a new tab in a launched profile |
+| `argus_page_recording` | `POST /v1/page/recording` | What has been done to this page so far |
+| `argus_save_page_recording` | `POST /v1/page/save-recording` | Save what was done to a page as an automation |
 | `argus_page_snapshot` | _CDP, no endpoint_ | The interactive elements on a page, each with a selector to act on it |
 | `argus_click` | _CDP, no endpoint_ | Click an element, or a point, in a running profile's page |
 | `argus_type` | _CDP, no endpoint_ | Type into a field in a running profile's page |
@@ -171,6 +192,36 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 | `argus_read_page` | _CDP, no endpoint_ | Read a page's visible text, whole or by CSS selector |
 | `argus_screenshot` | _CDP, no endpoint_ | Screenshot a page — JPEG by default, PNG on request |
 | `argus_eval` | _CDP, no endpoint_ | Evaluate a JavaScript expression in a page and return its value |
+
+## Mail
+
+| Tool | Endpoint | What it does |
+| --- | --- | --- |
+| `argus_list_mailboxes` | `GET /v1/mail/mailboxes` | The mailboxes this workspace can read |
+| `argus_list_messages` | `POST /v1/mail/messages` | List a mailbox folder |
+| `argus_read_message` | `POST /v1/mail/message` | Read one message |
+| `argus_read_new_message` | `POST /v1/mail/wait` | Wait for a message that has not arrived yet |
+| `argus_open_compose` | `POST /v1/mail/compose/open` | Start a draft |
+| `argus_list_compose` | `GET /v1/mail/compose` | Drafts that are open right now |
+| `argus_set_compose_fields` | `POST /v1/mail/compose/set` | Fill in a draft |
+| `argus_send_compose` | `POST /v1/mail/compose/send` | Send a draft |
+| `argus_close_compose` | `POST /v1/mail/compose/close` | Discard a draft |
+
+## Knowledge base
+
+| Tool | Endpoint | What it does |
+| --- | --- | --- |
+| `argus_list_docs` | `POST /v1/kb/docs` | The knowledge-base index |
+| `argus_read_doc` | `POST /v1/kb/doc` | Read one knowledge-base article |
+| `argus_search_docs` | `POST /v1/kb/search` | Search the knowledge base |
+| `argus_get_context` | `GET /v1/context` | What this workspace actually holds |
+| `argus_recent_errors` | `GET /v1/errors/recent` | What has gone wrong lately |
+
+## Connection
+
+| Tool | Endpoint | What it does |
+| --- | --- | --- |
+| `argus_connection_status` | _CDP, no endpoint_ | Confirm this MCP connection works, and say as whom |
 
 ## Resources
 

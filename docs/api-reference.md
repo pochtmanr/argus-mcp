@@ -5,7 +5,7 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 - Base URL: `http://127.0.0.1:39219`
 - Auth: `Authorization: Bearer <YOUR_API_KEY>`
 - Bodies: `Content-Type: application/json`
-- Surface: 89 endpoints, 98 agent tools
+- Surface: 124 endpoints, 134 agent tools
 
 ## Keys and approval
 
@@ -292,6 +292,74 @@ curl -X POST "http://127.0.0.1:39219/v1/profiles/fingerprint-check" \
   -H "Authorization: Bearer <YOUR_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{ "profileId": "<id>", "network": false }'
+```
+
+### POST /v1/profiles/trash
+
+Move profiles to the trash
+
+- MCP tool: `argus_trash_profiles`
+
+Move profiles to the trash, which is undoable with argus_restore_profiles. Prefer this to argus_delete_profile: a trashed profile keeps its cookies and its proxy assignment, and a deleted one is gone with them.
+
+Fields:
+- `profileIds` (strings, required) — From argus_list_profiles.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/profiles/trash" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "profileIds": ["<id>"] }'
+```
+
+### GET /v1/profiles/trashed
+
+Profiles currently in the trash
+
+- MCP tool: `argus_list_trashed_profiles`
+
+The profiles currently in the trash, with the id argus_restore_profiles and argus_purge_profiles take. Trashed profiles do not appear in argus_list_profiles.
+
+```sh
+curl -X GET "http://127.0.0.1:39219/v1/profiles/trashed" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json"
+```
+
+### POST /v1/profiles/restore
+
+Restore profiles from the trash
+
+- MCP tool: `argus_restore_profiles`
+
+Bring trashed profiles back, with their cookies and proxy assignment intact. Ids come from argus_list_trashed_profiles.
+
+Fields:
+- `profileIds` (strings, required) — From argus_list_trashed_profiles.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/profiles/restore" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "profileIds": ["<id>"] }'
+```
+
+### POST /v1/profiles/purge
+
+Delete trashed profiles permanently
+
+- MCP tool: `argus_purge_profiles`
+
+Permanently delete profiles that are already in the trash, with their cookie jars. There is no undo and no second copy -- this raises a card for the user to confirm before anything is destroyed.
+
+Fields:
+- `profileIds` (strings, required) — From argus_list_trashed_profiles.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/profiles/purge" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "profileIds": ["<id>"] }'
 ```
 
 ## Proxies
@@ -786,6 +854,42 @@ curl -X POST "http://127.0.0.1:39219/v1/automations/runs" \
   -d '{ "automationId": "<id>" }'
 ```
 
+### POST /v1/automations/search
+
+Find automations by name, step or connector
+
+- MCP tool: `argus_search_automations`
+
+Find automations whose name, description, tags or step contents match a query. Use this rather than reading every document with argus_get_automation when you are looking for the one that does a particular thing.
+
+Fields:
+- `query` (string, required)
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/automations/search" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "query": "instagram login" }'
+```
+
+### POST /v1/automations/summary
+
+What one automation does, without its full document
+
+- MCP tool: `argus_automation_summary`
+
+A readable account of what an automation does: its steps in order, the connectors and datasets it touches, its parameters and how it is scheduled. Far cheaper than argus_get_automation, which returns the whole JSON document and is what you want only when you are about to rewrite it.
+
+Fields:
+- `automationId` (string, required)
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/automations/summary" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "automationId": "<id>" }'
+```
+
 ## Schedule
 
 A schedule entry is an ordered list of automations with a time on it — a different thing from the schedule an automation carries itself, which runs that one automation alone. Entries fire only while the launcher is open: a time it was closed for is recorded as missed and skipped, never caught up. Occurrences is the record of what ran, not the plan for what will.
@@ -961,6 +1065,24 @@ curl -X POST "http://127.0.0.1:39219/v1/schedule/notifications" \
   -d '{ "notifyFailures": true, "dailySummary": false }'
 ```
 
+### POST /v1/schedule/day
+
+One day of the calendar
+
+- MCP tool: `argus_schedule_day`
+
+Everything scheduled on one day, in clock order, with what each entry will run and whether it is enabled. Defaults to today. This is the calendar as the Schedule tab draws it; argus_schedule_history is the record of what already ran.
+
+Fields:
+- `day` (string) — YYYY-MM-DD. Defaults to today.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/schedule/day" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "day": "2026-08-25" }'
+```
+
 ## Triggers
 
 A trigger fires an automation when something happens rather than at a time you set — an inbound webhook, a selector appearing or disappearing on a page a profile already has open, a domain's cookies changing, another run finishing, or a file landing in a watched folder. The clock-driven half is Schedule, above. Creating or re-pointing one needs a key with no folder scope and always asks the user to approve it, because a webhook trigger mints a URL that can start runs in the workspace. Like schedules, triggers fire only while the launcher is open.
@@ -1044,6 +1166,25 @@ curl -X POST "http://127.0.0.1:39219/v1/event-triggers/delete" \
   -H "Authorization: Bearer <YOUR_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{ "triggerId": "<id>" }'
+```
+
+### POST /v1/event-triggers/history
+
+What has fired recently
+
+- MCP tool: `argus_trigger_history`
+
+Recent firings of the workspace's event triggers: when each fired, what it ran and how that turned out. Without a trigger id it reports every trigger. This is where to look when someone says an automation "did not run".
+
+Fields:
+- `trigger` (string) — A trigger id from argus_list_event_triggers. All triggers when omitted.
+- `limit` (number) — Firings to return.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/event-triggers/history" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "trigger": "<id>", "limit": 20 }'
 ```
 
 ## Datasets
@@ -1327,6 +1468,25 @@ curl -X POST "http://127.0.0.1:39219/v1/datasets/purge" \
   -d '{ "datasetIds": ["<id>"] }'
 ```
 
+### POST /v1/datasets/rows/dedupe
+
+Remove duplicate rows
+
+- MCP tool: `argus_dedupe_rows`
+
+Delete rows that repeat an earlier row's values in the named columns, keeping the first of each. Raises a card saying how many would go before any are removed. Column keys come from argus_list_datasets.
+
+Fields:
+- `datasetId` (string, required)
+- `byColumns` (strings, required) — Column keys that together identify a duplicate.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/datasets/rows/dedupe" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "datasetId": "<id>", "byColumns": ["email"] }'
+```
+
 ## Projects
 
 A project is a named piece of work and the profiles, proxies, cookie sets, automations and datasets that serve it, along with a brief and a set of rules kept on that machine. Every route here needs a key with no folder scope: a project deliberately spans folders, so honouring one would mean answering with half a project. Reading a single document is the one route with no agent tool — it backs an MCP resource instead, so a body is fetched only once a client has decided it wants that body.
@@ -1397,6 +1557,163 @@ curl -X POST "http://127.0.0.1:39219/v1/projects/{id}/delegate" \
   -H "Authorization: Bearer <YOUR_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{ "goal": "Warm up the five new profiles for an hour each" }'
+```
+
+### POST /v1/projects/create
+
+Start a project
+
+- MCP tool: `argus_create_project`
+- Key scope: needs a key with no folder scope. Automations are shared across every folder and have none of their own, so a folder-scoped key may run them but may not author them.
+
+Start a project: a named piece of work that spans profiles, proxies, automations and datasets, with a goal and a brain of its own. Returns the id the other project tools take.
+
+Fields:
+- `name` (string, required)
+- `goal` (string) — One line. Becomes the project's brief.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/projects/create" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "Client X growth", "goal": "Grow 20 accounts" }'
+```
+
+### POST /v1/projects/add
+
+Put records into a project
+
+- MCP tool: `argus_add_to_project`
+- Key scope: needs a key with no folder scope. Automations are shared across every folder and have none of their own, so a folder-scoped key may run them but may not author them.
+
+Put profiles, proxies, cookie sets, automations or datasets into a project. Each item is {kind, id} -- kind is one of profile, proxy, cookieSet, automation, dataset. Membership is what makes the project rail show them together.
+
+Fields:
+- `projectId` (string, required)
+- `items` (objects, required) — [{kind, id}] -- kind: profile | proxy | cookieSet | automation | dataset.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/projects/add" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "projectId": "<id>", "items": [{ "kind": "profile", "id": "<id>" }] }'
+```
+
+### POST /v1/projects/remove
+
+Take records out of a project
+
+- MCP tool: `argus_remove_from_project`
+- Key scope: needs a key with no folder scope. Automations are shared across every folder and have none of their own, so a folder-scoped key may run them but may not author them.
+
+Take records out of a project. Removes only the membership -- the profile, proxy or automation itself is untouched. Same {kind, id} shape as argus_add_to_project.
+
+Fields:
+- `projectId` (string, required)
+- `items` (objects, required) — [{kind, id}] -- kind: profile | proxy | cookieSet | automation | dataset.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/projects/remove" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "projectId": "<id>", "items": [{ "kind": "profile", "id": "<id>" }] }'
+```
+
+### POST /v1/projects/doc/read
+
+Read one project document
+
+- MCP tool: `argus_read_project_doc`
+
+Read one document from a project's brain by path. Paths come from argus_list_projects, which indexes every document without its body. The same documents are also served as MCP resources (argus://project/<id>/<path>); this tool is for when you already know the path and want it in one call.
+
+Fields:
+- `projectId` (string, required)
+- `path` (string, required) — From the project index in argus_list_projects.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/projects/doc/read" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "projectId": "<id>", "path": "rules/posting-hours.md" }'
+```
+
+### POST /v1/projects/doc/write
+
+Write a project document
+
+- MCP tool: `argus_write_project_doc`
+- Key scope: needs a key with no folder scope. Automations are shared across every folder and have none of their own, so a folder-scoped key may run them but may not author them.
+
+Write a note, rule or runbook into a project's brain. Replaces the document at that path -- read it first with argus_read_project_doc unless you mean to start it over. PROJECT.md is the brief every agent reads before acting, so edit it deliberately.
+
+Fields:
+- `projectId` (string, required)
+- `path` (string, required) — Relative, one level deep, .md or .json.
+- `body` (string, required) — The whole document. This replaces what is there.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/projects/doc/write" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "projectId": "<id>", "path": "notes/2026-08-25.md", "body": "..." }'
+```
+
+### POST /v1/projects/doc/delete
+
+Delete a project document
+
+- MCP tool: `argus_delete_project_doc`
+- Key scope: needs a key with no folder scope. Automations are shared across every folder and have none of their own, so a folder-scoped key may run them but may not author them.
+
+Delete one document from a project's brain. Raises a card first: a project note is often the only record of a decision, and there is no trash for it.
+
+Fields:
+- `projectId` (string, required)
+- `path` (string, required)
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/projects/doc/delete" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "projectId": "<id>", "path": "notes/old.md" }'
+```
+
+### POST /v1/orchestration/plan
+
+Lay out a multi-step plan
+
+- MCP tool: `argus_make_plan`
+
+Record a plan as an ordered list of tasks, which the app shows as a live checklist and which argus_delegate_many can then work through. Use it when a request needs several rounds of work and the user should be able to see where it has got to.
+
+Fields:
+- `tasks` (objects, required) — [{title, detail?}] in the order they should happen.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/orchestration/plan" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "tasks": [{ "title": "Check every proxy" }] }'
+```
+
+### POST /v1/orchestration/delegate-many
+
+Hand several goals to subagents at once
+
+- MCP tool: `argus_delegate_many`
+- Key scope: needs a key with no folder scope. Automations are shared across every folder and have none of their own, so a folder-scoped key may run them but may not author them.
+
+Hand several independent goals to Argus's own orchestrator to work in parallel, each with the project's context and rules already loaded. Use argus_delegate for one goal; use this when the jobs do not depend on each other, because they then run at the same time rather than one after another.
+
+Fields:
+- `jobs` (objects, required) — [{goal, pack?, projectId?}] -- independent goals only.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/orchestration/delegate-many" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "jobs": [{ "goal": "Check the US proxies" }, { "goal": "Check the EU proxies" }] }'
 ```
 
 ## Connectors
@@ -1754,7 +2071,85 @@ curl -X POST "http://127.0.0.1:39219/v1/skills/delete" \
 
 ## Driving a page
 
-Five tools with no endpoint behind them. They attach to a profile that is already open and speak to the page directly, which is how an agent reads a page, clicks through it and takes a screenshot.
+Fourteen tools with no endpoint behind them. They attach to a profile that is already open and speak to the page directly, which is how an agent reads a page, clicks through it and takes a screenshot.
+
+### POST /v1/page/switch-tab
+
+Bring one of a profile's tabs to the front
+
+- MCP tool: `argus_switch_tab`
+
+Make one of the profile's open tabs the active one, so every later page verb acts on it. Tab ids come from argus_list_tabs.
+
+Fields:
+- `profileId` (string, required)
+- `tabId` (string, required) — From argus_list_tabs.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/page/switch-tab" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "profileId": "<id>", "tabId": "<id>" }'
+```
+
+### POST /v1/page/new-tab
+
+Open a new tab in a launched profile
+
+- MCP tool: `argus_new_tab`
+
+Open a new tab in a launched profile and make it the active one. Without a url it opens blank. Use this rather than argus_navigate when the page you are on is worth keeping.
+
+Fields:
+- `profileId` (string, required)
+- `url` (string) — Optional. Opens a blank tab when omitted.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/page/new-tab" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "profileId": "<id>", "url": "https://example.com" }'
+```
+
+### POST /v1/page/recording
+
+What has been done to this page so far
+
+- MCP tool: `argus_page_recording`
+
+The steps taken on this profile's page since it was launched, in the shape an automation stores them. Read this before argus_save_page_recording to see what would be saved, and which steps you may want to drop.
+
+Fields:
+- `profileId` (string, required)
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/page/recording" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "profileId": "<id>" }'
+```
+
+### POST /v1/page/save-recording
+
+Save what was done to a page as an automation
+
+- MCP tool: `argus_save_page_recording`
+- Key scope: needs a key with no folder scope. Automations are shared across every folder and have none of their own, so a folder-scoped key may run them but may not author them.
+
+Turn what you have just done to a page into a saved automation that can be run again and scheduled. Call argus_page_recording first and pass dropSteps for any the automation should not repeat -- a wrong turn, a step that only made sense once.
+
+Fields:
+- `profileId` (string, required)
+- `name` (string, required) — What the saved automation is called.
+- `description` (string)
+- `dropSteps` (numbers) — Indexes from argus_page_recording to leave out. Numbers, 0-based.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/page/save-recording" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "profileId": "<id>", "name": "Daily check", "dropSteps": [3] }'
+```
 
 ### argus_page_snapshot (MCP tool)
 
@@ -1905,6 +2300,272 @@ Evaluate a JavaScript expression in a page and return its value
 Fields:
 - `profileId` (string, required) — The running profile whose active page to evaluate in.
 - `expression` (string, required) — A JavaScript expression. Promises are awaited and the resolved value returned.
+
+## Mail
+
+### GET /v1/mail/mailboxes
+
+The mailboxes this workspace can read
+
+- MCP tool: `argus_list_mailboxes`
+
+The email accounts this workspace has connected, with the id every other mail tool takes. Each is read through the exit its linked profile uses, so a mailbox and the profile it belongs to stay correlated -- you never supply a proxy.
+
+```sh
+curl -X GET "http://127.0.0.1:39219/v1/mail/mailboxes" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json"
+```
+
+### POST /v1/mail/messages
+
+List a mailbox folder
+
+- MCP tool: `argus_list_messages`
+
+Headers from one folder of a mailbox, newest first: uid, from, subject and date. Bodies are not included -- argus_read_message fetches one. Folder defaults to the inbox.
+
+Fields:
+- `mailboxId` (string, required) — From argus_list_mailboxes.
+- `folder` (string) — Defaults to the inbox.
+- `limit` (number) — Messages to return.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/mail/messages" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "mailboxId": "<id>", "folder": "INBOX", "limit": 20 }'
+```
+
+### POST /v1/mail/message
+
+Read one message
+
+- MCP tool: `argus_read_message`
+
+One message in full, by uid, including its body and any links in it. The uid and folder come from argus_list_messages, and a uid is only meaningful inside its own folder.
+
+Fields:
+- `mailboxId` (string, required)
+- `folder` (string, required) — The folder the uid came from.
+- `uid` (number, required) — From argus_list_messages.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/mail/message" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "mailboxId": "<id>", "folder": "INBOX", "uid": 4211 }'
+```
+
+### POST /v1/mail/wait
+
+Wait for a message that has not arrived yet
+
+- MCP tool: `argus_read_new_message`
+
+Wait for a message matching a sender or subject pattern and return it when it lands. This is how a confirmation or verification code is collected: send the form first, then call this. It holds the connection until the message arrives or timeoutSeconds passes, and is the one route allowed to wait past the usual budget -- at most about 100 seconds, so poll again rather than asking for more.
+
+Fields:
+- `mailboxId` (string, required)
+- `fromPattern` (string) — Substring or regex matched against the sender.
+- `subjectPattern` (string) — Substring or regex matched against the subject.
+- `sinceSeconds` (number) — Only consider messages this recent. Guards against an older match.
+- `timeoutSeconds` (number) — How long to wait before giving up.
+- `folders` (string) — Comma-separated folders to watch. Defaults to the inbox.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/mail/wait" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "mailboxId": "<id>", "fromPattern": "noreply@", "timeoutSeconds": 120 }'
+```
+
+### POST /v1/mail/compose/open
+
+Start a draft
+
+- MCP tool: `argus_open_compose`
+
+Start a draft on one mailbox and return its draftId. Nothing is sent: fill it with argus_set_compose_fields and send it with argus_send_compose, which is what raises the card. Opening a draft is deliberately a separate step from sending one, so a half-written message cannot go out.
+
+Fields:
+- `mailboxId` (string, required)
+- `to` (string)
+- `cc` (string)
+- `subject` (string)
+- `body` (string)
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/mail/compose/open" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "mailboxId": "<id>", "to": "someone@example.com", "subject": "Hello" }'
+```
+
+### GET /v1/mail/compose
+
+Drafts that are open right now
+
+- MCP tool: `argus_list_compose`
+
+The drafts currently open, with their ids and what each one has in it so far. Use it to find a draftId you have lost track of before sending or closing it.
+
+```sh
+curl -X GET "http://127.0.0.1:39219/v1/mail/compose" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json"
+```
+
+### POST /v1/mail/compose/set
+
+Fill in a draft
+
+- MCP tool: `argus_set_compose_fields`
+
+Set fields on an open draft. Only the fields you pass change; the rest keep what they had. Without a draftId it acts on the only open draft, and says so if there is more than one.
+
+Fields:
+- `draftId` (string) — From argus_open_compose or argus_list_compose.
+- `to` (string)
+- `cc` (string)
+- `bcc` (string)
+- `subject` (string)
+- `body` (string)
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/mail/compose/set" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "draftId": "<id>", "body": "..." }'
+```
+
+### POST /v1/mail/compose/send
+
+Send a draft
+
+- MCP tool: `argus_send_compose`
+
+Send an open draft. This one always raises a card showing the recipient, subject and body: mail is the one thing here that leaves the machine and reaches another person, and it cannot be recalled.
+
+Fields:
+- `draftId` (string) — The only open draft when omitted.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/mail/compose/send" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "draftId": "<id>" }'
+```
+
+### POST /v1/mail/compose/close
+
+Discard a draft
+
+- MCP tool: `argus_close_compose`
+
+Throw away an open draft without sending it.
+
+Fields:
+- `draftId` (string) — The only open draft when omitted.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/mail/compose/close" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "draftId": "<id>" }'
+```
+
+## Knowledge base
+
+### POST /v1/kb/docs
+
+The knowledge-base index
+
+- MCP tool: `argus_list_docs`
+
+Index the knowledge base: every article's id and one-line summary, without the bodies. Three wings -- how the app works, how to do the work, and what this workspace has learned. Read an article with argus_read_doc. Consult this before telling a user the app cannot do something.
+
+Fields:
+- `wing` (string) — Narrow to one wing. All three when omitted.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/kb/docs" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "wing": "app" }'
+```
+
+### POST /v1/kb/doc
+
+Read one knowledge-base article
+
+- MCP tool: `argus_read_doc`
+
+One knowledge-base article in full. Ids come from argus_list_docs or argus_search_docs. These are the same articles the in-app assistant reads, and they are the authority on how a feature actually behaves.
+
+Fields:
+- `docId` (string, required) — From argus_list_docs or argus_search_docs.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/kb/doc" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "docId": "<id>" }'
+```
+
+### POST /v1/kb/search
+
+Search the knowledge base
+
+- MCP tool: `argus_search_docs`
+
+Search the knowledge base and get back the articles that match, best first, with the passage that matched. Start here when you do not know which article answers the question -- it is cheaper than reading the index and then guessing.
+
+Fields:
+- `query` (string, required)
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/kb/search" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "query": "why did my proxy check fail" }'
+```
+
+### GET /v1/context
+
+What this workspace actually holds
+
+- MCP tool: `argus_get_context`
+
+An honest account of the workspace as it is right now: how many profiles, proxies, automations, datasets and mailboxes there are, which are in trouble, and what is running. Call this before answering a question about what the user has -- it is the difference between a real answer and a guess.
+
+```sh
+curl -X GET "http://127.0.0.1:39219/v1/context" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json"
+```
+
+### GET /v1/errors/recent
+
+What has gone wrong lately
+
+- MCP tool: `argus_recent_errors`
+
+The errors this workspace has hit recently -- failed runs, proxy checks, mail sends -- with what was being done at the time. Read it before debugging anything, and before claiming something works.
+
+```sh
+curl -X GET "http://127.0.0.1:39219/v1/errors/recent" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json"
+```
+
+## Connection
+
+### argus_connection_status (MCP tool)
+
+Confirm this MCP connection works, and say as whom
+
+- No endpoint. It asks the MCP server about this connection itself -- whether it is authenticated and what it can see -- so it needs nothing open and no arguments.
 
 ## Status codes
 

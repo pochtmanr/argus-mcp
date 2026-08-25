@@ -3,7 +3,7 @@
   "info": {
     "title": "The Argus local API",
     "version": "1.0.0",
-    "summary": "89 endpoints for profiles, proxies, cookies, automations and schedules, 98 of them fronted by MCP tools.",
+    "summary": "124 endpoints for profiles, proxies, cookies, automations and schedules, 134 of them fronted by MCP tools.",
     "description": "This is a local API. It listens on loopback on the machine running Argus, and nothing off that machine can reach it. There is no hosted web API.\n\nThe server starts with the Argus launcher and stops with it. Keys are created in the launcher under the API tab, may be scoped to folders, and the first call from a new client raises an approve-or-deny prompt that holds the request until it is answered.\n\nGenerated from the launcher's own route table. The human version of this document is https://www.browserargus.com/api-reference, and the same content as Markdown is https://www.browserargus.com/api-reference.md.",
     "license": {
       "name": "MIT",
@@ -77,6 +77,16 @@
     {
       "name": "Skills",
       "description": "A skill is the working brief the in-app assistant loads for one job — instructions, worked examples, a reference shelf, and the pack of tools it may reach. Saving one creates a custom skill, or writes a local override of a built-in. Deleting is not the mirror image: a custom skill goes, while a built-in is reset to the brief it shipped with."
+    },
+    {
+      "name": "Driving a page",
+      "description": "Fourteen tools with no endpoint behind them. They attach to a profile that is already open and speak to the page directly, which is how an agent reads a page, clicks through it and takes a screenshot."
+    },
+    {
+      "name": "Mail"
+    },
+    {
+      "name": "Knowledge base"
     }
   ],
   "paths": {
@@ -10699,6 +10709,4109 @@
           }
         }
       }
+    },
+    "/v1/profiles/trash": {
+      "post": {
+        "operationId": "argus_trash_profiles",
+        "summary": "Move profiles to the trash",
+        "description": "Move profiles to the trash\n\nMove profiles to the trash, which is undoable with argus_restore_profiles. Prefer this to argus_delete_profile: a trashed profile keeps its cookies and its proxy assignment, and a deleted one is gone with them.\n\nMCP tool: `argus_trash_profiles`.",
+        "tags": [
+          "Profiles"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_trash_profiles",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "From argus_list_profiles."
+                  }
+                },
+                "required": [
+                  "profileIds"
+                ]
+              },
+              "example": {
+                "profileIds": [
+                  "<id>"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/profiles/trashed": {
+      "get": {
+        "operationId": "argus_list_trashed_profiles",
+        "summary": "Profiles currently in the trash",
+        "description": "Profiles currently in the trash\n\nThe profiles currently in the trash, with the id argus_restore_profiles and argus_purge_profiles take. Trashed profiles do not appear in argus_list_profiles.\n\nMCP tool: `argus_list_trashed_profiles`.",
+        "tags": [
+          "Profiles"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_list_trashed_profiles"
+      }
+    },
+    "/v1/profiles/restore": {
+      "post": {
+        "operationId": "argus_restore_profiles",
+        "summary": "Restore profiles from the trash",
+        "description": "Restore profiles from the trash\n\nBring trashed profiles back, with their cookies and proxy assignment intact. Ids come from argus_list_trashed_profiles.\n\nMCP tool: `argus_restore_profiles`.",
+        "tags": [
+          "Profiles"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_restore_profiles",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "From argus_list_trashed_profiles."
+                  }
+                },
+                "required": [
+                  "profileIds"
+                ]
+              },
+              "example": {
+                "profileIds": [
+                  "<id>"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/profiles/purge": {
+      "post": {
+        "operationId": "argus_purge_profiles",
+        "summary": "Delete trashed profiles permanently",
+        "description": "Delete trashed profiles permanently\n\nPermanently delete profiles that are already in the trash, with their cookie jars. There is no undo and no second copy -- this raises a card for the user to confirm before anything is destroyed.\n\nMCP tool: `argus_purge_profiles`.\n\nThis call blocks while an approve-or-deny card is shown in the launcher, and answers 403 if it is denied or allowed to lapse.",
+        "tags": [
+          "Profiles"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_purge_profiles",
+        "x-approval": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "From argus_list_trashed_profiles."
+                  }
+                },
+                "required": [
+                  "profileIds"
+                ]
+              },
+              "example": {
+                "profileIds": [
+                  "<id>"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/page/switch-tab": {
+      "post": {
+        "operationId": "argus_switch_tab",
+        "summary": "Bring one of a profile's tabs to the front",
+        "description": "Bring one of a profile's tabs to the front\n\nMake one of the profile's open tabs the active one, so every later page verb acts on it. Tab ids come from argus_list_tabs.\n\nMCP tool: `argus_switch_tab`.",
+        "tags": [
+          "Driving a page"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_switch_tab",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileId": {
+                    "type": "string"
+                  },
+                  "tabId": {
+                    "type": "string",
+                    "description": "From argus_list_tabs."
+                  }
+                },
+                "required": [
+                  "profileId",
+                  "tabId"
+                ]
+              },
+              "example": {
+                "profileId": "<id>",
+                "tabId": "<id>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/page/new-tab": {
+      "post": {
+        "operationId": "argus_new_tab",
+        "summary": "Open a new tab in a launched profile",
+        "description": "Open a new tab in a launched profile\n\nOpen a new tab in a launched profile and make it the active one. Without a url it opens blank. Use this rather than argus_navigate when the page you are on is worth keeping.\n\nMCP tool: `argus_new_tab`.",
+        "tags": [
+          "Driving a page"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_new_tab",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileId": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "Optional. Opens a blank tab when omitted."
+                  }
+                },
+                "required": [
+                  "profileId"
+                ]
+              },
+              "example": {
+                "profileId": "<id>",
+                "url": "https://example.com"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/page/recording": {
+      "post": {
+        "operationId": "argus_page_recording",
+        "summary": "What has been done to this page so far",
+        "description": "What has been done to this page so far\n\nThe steps taken on this profile's page since it was launched, in the shape an automation stores them. Read this before argus_save_page_recording to see what would be saved, and which steps you may want to drop.\n\nMCP tool: `argus_page_recording`.",
+        "tags": [
+          "Driving a page"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_page_recording",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "profileId"
+                ]
+              },
+              "example": {
+                "profileId": "<id>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/page/save-recording": {
+      "post": {
+        "operationId": "argus_save_page_recording",
+        "summary": "Save what was done to a page as an automation",
+        "description": "Save what was done to a page as an automation\n\nTurn what you have just done to a page into a saved automation that can be run again and scheduled. Call argus_page_recording first and pass dropSteps for any the automation should not repeat -- a wrong turn, a step that only made sense once.\n\nMCP tool: `argus_save_page_recording`.\n\nSaving a recording AUTHORS an automation, and authoring is unscoped for the reason POST /v1/automations/create is: an automation folder is filing, not a permission boundary.",
+        "tags": [
+          "Driving a page"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_save_page_recording",
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileId": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "What the saved automation is called."
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "dropSteps": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "description": "Indexes from argus_page_recording to leave out. Numbers, 0-based."
+                  }
+                },
+                "required": [
+                  "profileId",
+                  "name"
+                ]
+              },
+              "example": {
+                "profileId": "<id>",
+                "name": "Daily check",
+                "dropSteps": [
+                  3
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/datasets/rows/dedupe": {
+      "post": {
+        "operationId": "argus_dedupe_rows",
+        "summary": "Remove duplicate rows",
+        "description": "Remove duplicate rows\n\nDelete rows that repeat an earlier row's values in the named columns, keeping the first of each. Raises a card saying how many would go before any are removed. Column keys come from argus_list_datasets.\n\nMCP tool: `argus_dedupe_rows`.\n\nThis call blocks while an approve-or-deny card is shown in the launcher, and answers 403 if it is denied or allowed to lapse.",
+        "tags": [
+          "Datasets"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_dedupe_rows",
+        "x-approval": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "datasetId": {
+                    "type": "string"
+                  },
+                  "byColumns": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Column keys that together identify a duplicate."
+                  }
+                },
+                "required": [
+                  "datasetId",
+                  "byColumns"
+                ]
+              },
+              "example": {
+                "datasetId": "<id>",
+                "byColumns": [
+                  "email"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/automations/search": {
+      "post": {
+        "operationId": "argus_search_automations",
+        "summary": "Find automations by name, step or connector",
+        "description": "Find automations by name, step or connector\n\nFind automations whose name, description, tags or step contents match a query. Use this rather than reading every document with argus_get_automation when you are looking for the one that does a particular thing.\n\nMCP tool: `argus_search_automations`.",
+        "tags": [
+          "Automations"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_search_automations",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              },
+              "example": {
+                "query": "instagram login"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/automations/summary": {
+      "post": {
+        "operationId": "argus_automation_summary",
+        "summary": "What one automation does, without its full document",
+        "description": "What one automation does, without its full document\n\nA readable account of what an automation does: its steps in order, the connectors and datasets it touches, its parameters and how it is scheduled. Far cheaper than argus_get_automation, which returns the whole JSON document and is what you want only when you are about to rewrite it.\n\nMCP tool: `argus_automation_summary`.",
+        "tags": [
+          "Automations"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_automation_summary",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "automationId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "automationId"
+                ]
+              },
+              "example": {
+                "automationId": "<id>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/schedule/day": {
+      "post": {
+        "operationId": "argus_schedule_day",
+        "summary": "One day of the calendar",
+        "description": "One day of the calendar\n\nEverything scheduled on one day, in clock order, with what each entry will run and whether it is enabled. Defaults to today. This is the calendar as the Schedule tab draws it; argus_schedule_history is the record of what already ran.\n\nMCP tool: `argus_schedule_day`.",
+        "tags": [
+          "Schedule"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_schedule_day",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "day": {
+                    "type": "string",
+                    "description": "YYYY-MM-DD. Defaults to today."
+                  }
+                }
+              },
+              "example": {
+                "day": "2026-08-25"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/event-triggers/history": {
+      "post": {
+        "operationId": "argus_trigger_history",
+        "summary": "What has fired recently",
+        "description": "What has fired recently\n\nRecent firings of the workspace's event triggers: when each fired, what it ran and how that turned out. Without a trigger id it reports every trigger. This is where to look when someone says an automation \"did not run\".\n\nMCP tool: `argus_trigger_history`.",
+        "tags": [
+          "Triggers"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_trigger_history",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "trigger": {
+                    "type": "string",
+                    "description": "A trigger id from argus_list_event_triggers. All triggers when omitted."
+                  },
+                  "limit": {
+                    "type": "number",
+                    "description": "Firings to return."
+                  }
+                }
+              },
+              "example": {
+                "trigger": "<id>",
+                "limit": 20
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/create": {
+      "post": {
+        "operationId": "argus_create_project",
+        "summary": "Start a project",
+        "description": "Start a project\n\nStart a project: a named piece of work that spans profiles, proxies, automations and datasets, with a goal and a brain of its own. Returns the id the other project tools take.\n\nMCP tool: `argus_create_project`.\n\nA project spans every tab and holds profiles, proxies and automations from any folder, so a folder-scoped key has no coherent project to create.",
+        "tags": [
+          "Projects"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_create_project",
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "goal": {
+                    "type": "string",
+                    "description": "One line. Becomes the project's brief."
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              },
+              "example": {
+                "name": "Client X growth",
+                "goal": "Grow 20 accounts"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/add": {
+      "post": {
+        "operationId": "argus_add_to_project",
+        "summary": "Put records into a project",
+        "description": "Put records into a project\n\nPut profiles, proxies, cookie sets, automations or datasets into a project. Each item is {kind, id} -- kind is one of profile, proxy, cookieSet, automation, dataset. Membership is what makes the project rail show them together.\n\nMCP tool: `argus_add_to_project`.\n\nA project spans folders, so a folder-scoped key cannot say what belongs to one.",
+        "tags": [
+          "Projects"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_add_to_project",
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "projectId": {
+                    "type": "string"
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "description": "[{kind, id}] -- kind: profile | proxy | cookieSet | automation | dataset."
+                  }
+                },
+                "required": [
+                  "projectId",
+                  "items"
+                ]
+              },
+              "example": {
+                "projectId": "<id>",
+                "items": [
+                  {
+                    "kind": "profile",
+                    "id": "<id>"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/remove": {
+      "post": {
+        "operationId": "argus_remove_from_project",
+        "summary": "Take records out of a project",
+        "description": "Take records out of a project\n\nTake records out of a project. Removes only the membership -- the profile, proxy or automation itself is untouched. Same {kind, id} shape as argus_add_to_project.\n\nMCP tool: `argus_remove_from_project`.\n\nA project spans folders, so a folder-scoped key cannot say what belongs to one.",
+        "tags": [
+          "Projects"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_remove_from_project",
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "projectId": {
+                    "type": "string"
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "description": "[{kind, id}] -- kind: profile | proxy | cookieSet | automation | dataset."
+                  }
+                },
+                "required": [
+                  "projectId",
+                  "items"
+                ]
+              },
+              "example": {
+                "projectId": "<id>",
+                "items": [
+                  {
+                    "kind": "profile",
+                    "id": "<id>"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/doc/read": {
+      "post": {
+        "operationId": "argus_read_project_doc",
+        "summary": "Read one project document",
+        "description": "Read one project document\n\nRead one document from a project's brain by path. Paths come from argus_list_projects, which indexes every document without its body. The same documents are also served as MCP resources (argus://project/<id>/<path>); this tool is for when you already know the path and want it in one call.\n\nMCP tool: `argus_read_project_doc`.",
+        "tags": [
+          "Projects"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_read_project_doc",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "projectId": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string",
+                    "description": "From the project index in argus_list_projects."
+                  }
+                },
+                "required": [
+                  "projectId",
+                  "path"
+                ]
+              },
+              "example": {
+                "projectId": "<id>",
+                "path": "rules/posting-hours.md"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/doc/write": {
+      "post": {
+        "operationId": "argus_write_project_doc",
+        "summary": "Write a project document",
+        "description": "Write a project document\n\nWrite a note, rule or runbook into a project's brain. Replaces the document at that path -- read it first with argus_read_project_doc unless you mean to start it over. PROJECT.md is the brief every agent reads before acting, so edit it deliberately.\n\nMCP tool: `argus_write_project_doc`.\n\nA project spans folders, so a folder-scoped key has no project to write into.",
+        "tags": [
+          "Projects"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_write_project_doc",
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "projectId": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string",
+                    "description": "Relative, one level deep, .md or .json."
+                  },
+                  "body": {
+                    "type": "string",
+                    "description": "The whole document. This replaces what is there."
+                  }
+                },
+                "required": [
+                  "projectId",
+                  "path",
+                  "body"
+                ]
+              },
+              "example": {
+                "projectId": "<id>",
+                "path": "notes/2026-08-25.md",
+                "body": "..."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/projects/doc/delete": {
+      "post": {
+        "operationId": "argus_delete_project_doc",
+        "summary": "Delete a project document",
+        "description": "Delete a project document\n\nDelete one document from a project's brain. Raises a card first: a project note is often the only record of a decision, and there is no trash for it.\n\nMCP tool: `argus_delete_project_doc`.\n\nA project spans folders, so a folder-scoped key has no project to write into.\n\nThis call blocks while an approve-or-deny card is shown in the launcher, and answers 403 if it is denied or allowed to lapse.",
+        "tags": [
+          "Projects"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_delete_project_doc",
+        "x-approval": true,
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "projectId": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "projectId",
+                  "path"
+                ]
+              },
+              "example": {
+                "projectId": "<id>",
+                "path": "notes/old.md"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/orchestration/plan": {
+      "post": {
+        "operationId": "argus_make_plan",
+        "summary": "Lay out a multi-step plan",
+        "description": "Lay out a multi-step plan\n\nRecord a plan as an ordered list of tasks, which the app shows as a live checklist and which argus_delegate_many can then work through. Use it when a request needs several rounds of work and the user should be able to see where it has got to.\n\nMCP tool: `argus_make_plan`.",
+        "tags": [
+          "Projects"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_make_plan",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tasks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "description": "[{title, detail?}] in the order they should happen."
+                  }
+                },
+                "required": [
+                  "tasks"
+                ]
+              },
+              "example": {
+                "tasks": [
+                  {
+                    "title": "Check every proxy"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/orchestration/delegate-many": {
+      "post": {
+        "operationId": "argus_delegate_many",
+        "summary": "Hand several goals to subagents at once",
+        "description": "Hand several goals to subagents at once\n\nHand several independent goals to Argus's own orchestrator to work in parallel, each with the project's context and rules already loaded. Use argus_delegate for one goal; use this when the jobs do not depend on each other, because they then run at the same time rather than one after another.\n\nMCP tool: `argus_delegate_many`.\n\nA subagent reaches the whole assistant tool surface, which spans every folder -- the same reason POST /v1/projects/{id}/delegate is unscoped.",
+        "tags": [
+          "Projects"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_delegate_many",
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "jobs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "description": "[{goal, pack?, projectId?}] -- independent goals only."
+                  }
+                },
+                "required": [
+                  "jobs"
+                ]
+              },
+              "example": {
+                "jobs": [
+                  {
+                    "goal": "Check the US proxies"
+                  },
+                  {
+                    "goal": "Check the EU proxies"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mail/mailboxes": {
+      "get": {
+        "operationId": "argus_list_mailboxes",
+        "summary": "The mailboxes this workspace can read",
+        "description": "The mailboxes this workspace can read\n\nThe email accounts this workspace has connected, with the id every other mail tool takes. Each is read through the exit its linked profile uses, so a mailbox and the profile it belongs to stay correlated -- you never supply a proxy.\n\nMCP tool: `argus_list_mailboxes`.",
+        "tags": [
+          "Mail"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_list_mailboxes"
+      }
+    },
+    "/v1/mail/messages": {
+      "post": {
+        "operationId": "argus_list_messages",
+        "summary": "List a mailbox folder",
+        "description": "List a mailbox folder\n\nHeaders from one folder of a mailbox, newest first: uid, from, subject and date. Bodies are not included -- argus_read_message fetches one. Folder defaults to the inbox.\n\nMCP tool: `argus_list_messages`.",
+        "tags": [
+          "Mail"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_list_messages",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mailboxId": {
+                    "type": "string",
+                    "description": "From argus_list_mailboxes."
+                  },
+                  "folder": {
+                    "type": "string",
+                    "description": "Defaults to the inbox."
+                  },
+                  "limit": {
+                    "type": "number",
+                    "description": "Messages to return."
+                  }
+                },
+                "required": [
+                  "mailboxId"
+                ]
+              },
+              "example": {
+                "mailboxId": "<id>",
+                "folder": "INBOX",
+                "limit": 20
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mail/message": {
+      "post": {
+        "operationId": "argus_read_message",
+        "summary": "Read one message",
+        "description": "Read one message\n\nOne message in full, by uid, including its body and any links in it. The uid and folder come from argus_list_messages, and a uid is only meaningful inside its own folder.\n\nMCP tool: `argus_read_message`.",
+        "tags": [
+          "Mail"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_read_message",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mailboxId": {
+                    "type": "string"
+                  },
+                  "folder": {
+                    "type": "string",
+                    "description": "The folder the uid came from."
+                  },
+                  "uid": {
+                    "type": "number",
+                    "description": "From argus_list_messages."
+                  }
+                },
+                "required": [
+                  "mailboxId",
+                  "folder",
+                  "uid"
+                ]
+              },
+              "example": {
+                "mailboxId": "<id>",
+                "folder": "INBOX",
+                "uid": 4211
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mail/wait": {
+      "post": {
+        "operationId": "argus_read_new_message",
+        "summary": "Wait for a message that has not arrived yet",
+        "description": "Wait for a message that has not arrived yet\n\nWait for a message matching a sender or subject pattern and return it when it lands. This is how a confirmation or verification code is collected: send the form first, then call this. It holds the connection until the message arrives or timeoutSeconds passes, and is the one route allowed to wait past the usual budget -- at most about 100 seconds, so poll again rather than asking for more.\n\nMCP tool: `argus_read_new_message`.",
+        "tags": [
+          "Mail"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_read_new_message",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mailboxId": {
+                    "type": "string"
+                  },
+                  "fromPattern": {
+                    "type": "string",
+                    "description": "Substring or regex matched against the sender."
+                  },
+                  "subjectPattern": {
+                    "type": "string",
+                    "description": "Substring or regex matched against the subject."
+                  },
+                  "sinceSeconds": {
+                    "type": "number",
+                    "description": "Only consider messages this recent. Guards against an older match."
+                  },
+                  "timeoutSeconds": {
+                    "type": "number",
+                    "description": "How long to wait before giving up."
+                  },
+                  "folders": {
+                    "type": "string",
+                    "description": "Comma-separated folders to watch. Defaults to the inbox."
+                  }
+                },
+                "required": [
+                  "mailboxId"
+                ]
+              },
+              "example": {
+                "mailboxId": "<id>",
+                "fromPattern": "noreply@",
+                "timeoutSeconds": 120
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mail/compose/open": {
+      "post": {
+        "operationId": "argus_open_compose",
+        "summary": "Start a draft",
+        "description": "Start a draft\n\nStart a draft on one mailbox and return its draftId. Nothing is sent: fill it with argus_set_compose_fields and send it with argus_send_compose, which is what raises the card. Opening a draft is deliberately a separate step from sending one, so a half-written message cannot go out.\n\nMCP tool: `argus_open_compose`.",
+        "tags": [
+          "Mail"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_open_compose",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mailboxId": {
+                    "type": "string"
+                  },
+                  "to": {
+                    "type": "string"
+                  },
+                  "cc": {
+                    "type": "string"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "body": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "mailboxId"
+                ]
+              },
+              "example": {
+                "mailboxId": "<id>",
+                "to": "someone@example.com",
+                "subject": "Hello"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mail/compose": {
+      "get": {
+        "operationId": "argus_list_compose",
+        "summary": "Drafts that are open right now",
+        "description": "Drafts that are open right now\n\nThe drafts currently open, with their ids and what each one has in it so far. Use it to find a draftId you have lost track of before sending or closing it.\n\nMCP tool: `argus_list_compose`.",
+        "tags": [
+          "Mail"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_list_compose"
+      }
+    },
+    "/v1/mail/compose/set": {
+      "post": {
+        "operationId": "argus_set_compose_fields",
+        "summary": "Fill in a draft",
+        "description": "Fill in a draft\n\nSet fields on an open draft. Only the fields you pass change; the rest keep what they had. Without a draftId it acts on the only open draft, and says so if there is more than one.\n\nMCP tool: `argus_set_compose_fields`.",
+        "tags": [
+          "Mail"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_set_compose_fields",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "draftId": {
+                    "type": "string",
+                    "description": "From argus_open_compose or argus_list_compose."
+                  },
+                  "to": {
+                    "type": "string"
+                  },
+                  "cc": {
+                    "type": "string"
+                  },
+                  "bcc": {
+                    "type": "string"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "body": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "draftId": "<id>",
+                "body": "..."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mail/compose/send": {
+      "post": {
+        "operationId": "argus_send_compose",
+        "summary": "Send a draft",
+        "description": "Send a draft\n\nSend an open draft. This one always raises a card showing the recipient, subject and body: mail is the one thing here that leaves the machine and reaches another person, and it cannot be recalled.\n\nMCP tool: `argus_send_compose`.\n\nThis call blocks while an approve-or-deny card is shown in the launcher, and answers 403 if it is denied or allowed to lapse.",
+        "tags": [
+          "Mail"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_send_compose",
+        "x-approval": true,
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "draftId": {
+                    "type": "string",
+                    "description": "The only open draft when omitted."
+                  }
+                }
+              },
+              "example": {
+                "draftId": "<id>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mail/compose/close": {
+      "post": {
+        "operationId": "argus_close_compose",
+        "summary": "Discard a draft",
+        "description": "Discard a draft\n\nThrow away an open draft without sending it.\n\nMCP tool: `argus_close_compose`.",
+        "tags": [
+          "Mail"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_close_compose",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "draftId": {
+                    "type": "string",
+                    "description": "The only open draft when omitted."
+                  }
+                }
+              },
+              "example": {
+                "draftId": "<id>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/kb/docs": {
+      "post": {
+        "operationId": "argus_list_docs",
+        "summary": "The knowledge-base index",
+        "description": "The knowledge-base index\n\nIndex the knowledge base: every article's id and one-line summary, without the bodies. Three wings -- how the app works, how to do the work, and what this workspace has learned. Read an article with argus_read_doc. Consult this before telling a user the app cannot do something.\n\nMCP tool: `argus_list_docs`.",
+        "tags": [
+          "Knowledge base"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_list_docs",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "wing": {
+                    "type": "string",
+                    "description": "Narrow to one wing. All three when omitted."
+                  }
+                }
+              },
+              "example": {
+                "wing": "app"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/kb/doc": {
+      "post": {
+        "operationId": "argus_read_doc",
+        "summary": "Read one knowledge-base article",
+        "description": "Read one knowledge-base article\n\nOne knowledge-base article in full. Ids come from argus_list_docs or argus_search_docs. These are the same articles the in-app assistant reads, and they are the authority on how a feature actually behaves.\n\nMCP tool: `argus_read_doc`.",
+        "tags": [
+          "Knowledge base"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_read_doc",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "docId": {
+                    "type": "string",
+                    "description": "From argus_list_docs or argus_search_docs."
+                  }
+                },
+                "required": [
+                  "docId"
+                ]
+              },
+              "example": {
+                "docId": "<id>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/kb/search": {
+      "post": {
+        "operationId": "argus_search_docs",
+        "summary": "Search the knowledge base",
+        "description": "Search the knowledge base\n\nSearch the knowledge base and get back the articles that match, best first, with the passage that matched. Start here when you do not know which article answers the question -- it is cheaper than reading the index and then guessing.\n\nMCP tool: `argus_search_docs`.",
+        "tags": [
+          "Knowledge base"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_search_docs",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              },
+              "example": {
+                "query": "why did my proxy check fail"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/context": {
+      "get": {
+        "operationId": "argus_get_context",
+        "summary": "What this workspace actually holds",
+        "description": "What this workspace actually holds\n\nAn honest account of the workspace as it is right now: how many profiles, proxies, automations, datasets and mailboxes there are, which are in trouble, and what is running. Call this before answering a question about what the user has -- it is the difference between a real answer and a guess.\n\nMCP tool: `argus_get_context`.",
+        "tags": [
+          "Knowledge base"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_get_context"
+      }
+    },
+    "/v1/errors/recent": {
+      "get": {
+        "operationId": "argus_recent_errors",
+        "summary": "What has gone wrong lately",
+        "description": "What has gone wrong lately\n\nThe errors this workspace has hit recently -- failed runs, proxy checks, mail sends -- with what was being done at the time. Read it before debugging anything, and before claiming something works.\n\nMCP tool: `argus_recent_errors`.",
+        "tags": [
+          "Knowledge base"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_recent_errors"
+      }
     }
   },
   "components": {
@@ -10744,6 +14857,16 @@
     }
   },
   "x-mcp-session-tools": [
+    {
+      "name": "argus_connection_status",
+      "group": "Connection",
+      "summary": "Confirm this MCP connection works, and say as whom",
+      "description": "No endpoint. It asks the MCP server about this connection itself -- whether it is authenticated and what it can see -- so it needs nothing open and no arguments.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
     {
       "name": "argus_page_snapshot",
       "group": "Driving a page",
