@@ -5,7 +5,7 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 - Base URL: `http://127.0.0.1:39219`
 - Auth: `Authorization: Bearer <YOUR_API_KEY>`
 - Bodies: `Content-Type: application/json`
-- Surface: 124 endpoints, 134 agent tools
+- Surface: 126 endpoints, 136 agent tools
 
 ## Keys and approval
 
@@ -697,6 +697,39 @@ curl -X GET "http://127.0.0.1:39219/v1/automations" \
   -H "Content-Type: application/json"
 ```
 
+### GET /v1/recipes
+
+List the prebuilt recipes, and which ones this workspace has set up
+
+- MCP tool: `argus_list_recipes`
+
+The prebuilt workflows that ship with Argus - 25 across eight categories on two tabs. `surface` splits them and it is the field to read first: 'scraper' means it is pointed at a target you name - a search, a URL, a profile - and the rows are the deliverable, and those are the eight on the Scraper tab (Google Maps and Instagram collectors, plus the any-site harvesters they are built out of). 'automations' means it operates your own accounts: session checks, register audits, and the dashboard readers that export a screen you are signed in to. Each entry gives its slug, the site it targets if it targets one named service, what it reads and writes, its parameters, whether it needs a signed-in profile, whether its selectors have been verified against a captured page, and whether this workspace has set it up. Read this BEFORE building a collector with argus_create_automation: if one already does the job, argus_set_up_recipe is one call instead of twelve steps.
+
+```sh
+curl -X GET "http://127.0.0.1:39219/v1/recipes" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json"
+```
+
+### POST /v1/recipes/set-up
+
+Create one prebuilt recipe, plus any tables it needs
+
+- MCP tool: `argus_set_up_recipe`
+- Key scope: needs a key with no folder scope. Automations are shared across every folder and have none of their own, so a folder-scoped key may run them but may not author them.
+
+Create one prebuilt workflow in this workspace, along with any tables it reads or writes that are missing. Returns the new automation id - run it with argus_run_automation. Calling it twice is safe: a recipe that is already here is returned unchanged, and its steps are never overwritten, so a workspace that edited one keeps its edits. It costs one automation slot, and a recipe sitting in Trash is refused with a 409 rather than duplicated.
+
+Fields:
+- `slug` (string, required)
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/recipes/set-up" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "slug": "<recipe slug>" }'
+```
+
 ### GET /v1/automations/schema
 
 The step catalogue: every step type, its fields and how they validate
@@ -910,17 +943,19 @@ curl -X GET "http://127.0.0.1:39219/v1/schedule/entries" \
 
 ### POST /v1/schedule/entries/create
 
-Create a scheduled workflow
+Create a scheduled workflow or AI task
 
 - MCP tool: `argus_create_schedule_entry`
 - Key scope: needs a key with no folder scope. Automations are shared across every folder and have none of their own, so a folder-scoped key may run them but may not author them.
 
-Schedule automations to run one after another at a set time. `recurrence` is {kind, at, date?, days?, from?, until?, tz?}: kind is 'once' (with date 'YYYY-MM-DD'), 'daily', or 'weekly' (with days, 0=Sunday..6=Saturday); at is 'HH:MM' 24-hour; tz is an optional IANA zone like 'Europe/Berlin', and without it the time is read on whatever machine runs it. `from` and `until` bound a daily or weekly schedule to a date range, both 'YYYY-MM-DD' and both inclusive -- WITHOUT `until` a repeat runs forever, so set it whenever the request names a period ('next week', 'until the 30th'); a 'once' takes neither, since it already names its day. `steps` is an ordered list of {automationId, profileIds, stopOnFail}: each step runs its automation on each profile in turn, the next step starts when the last finishes, and an empty profileIds means a browserless run. Get ids from argus_list_automations and argus_list_profiles. Entries fire only while the Argus launcher is open; a time it was closed for is skipped, never caught up.
+Put something on the Argus calendar. An entry is ONE of two things, and you choose by which field you send. `recurrence` is required either way: {kind, at, date?, days?, from?, until?, tz?} -- kind is 'once' (with date 'YYYY-MM-DD'), 'daily', or 'weekly' (with days, 0=Sunday..6=Saturday); at is 'HH:MM' 24-hour; tz is an optional IANA zone like 'Europe/Berlin', and without it the time is read on whatever machine runs it. `from` and `until` bound a daily or weekly schedule to a date range, both 'YYYY-MM-DD' and both inclusive -- WITHOUT `until` a repeat runs forever, so set it whenever the request names a period ('next week', 'until the 30th'); a 'once' takes neither, since it already names its day. Then send EITHER `steps` for an AUTOMATIONS workflow -- an ordered list of {automationId, profileIds, stopOnFail}, where each step runs its automation on each profile in turn, the next starts when the last finishes, and an empty profileIds means a browserless run; get ids from argus_list_automations and argus_list_profiles -- OR `prompt` for an AI TASK, which runs ONE agent turn on that instruction when it fires, using the tools the skills in `skills` carry, and reports back a sentence. Choose a workflow when the work is the same every time: it is deterministic and costs no AI tokens however often it repeats. Choose a task when the work needs a judgement or the answer IS the output ('check which proxies expire this week and tell me'); it calls a model on every run, forever. Sending both is refused. Nobody is watching when a task fires, so its prompt must stand on its own -- it cannot ask a question, and it cannot get an approval answered, so anything it writes must already be allowed by the workspace's autonomy settings. AI tasks need migration 20260844_schedule_ai_tasks; without it this answers 501. Entries fire only while the Argus launcher is open; a time it was closed for is skipped, never caught up.
 
 Fields:
 - `name` (string, required)
 - `recurrence` (object, required) — {kind: 'once'|'daily'|'weekly', at: 'HH:MM', date?: 'YYYY-MM-DD', days?: int[], from?: 'YYYY-MM-DD', until?: 'YYYY-MM-DD', tz?: IANA zone}. from/until bound a daily or weekly run to a date range, inclusive; without until it repeats forever. Neither is allowed on 'once'.
-- `steps` (objects, required) — Ordered [{automationId, profileIds: string[], stopOnFail: boolean}]. At least one.
+- `steps` (objects) — Makes this an automations workflow. Ordered [{automationId, profileIds: string[], stopOnFail: boolean}]. At least one. Required unless `prompt` is sent instead.
+- `prompt` (string) — Makes this an AI task rather than a workflow. The instruction to run unattended, at most 4000 characters. Send this OR `steps`, never both.
+- `skills` (strings) — For an AI task: skill ids whose tools it may use, at most 8. Omit or send [] for the assistant's default tools. An id this build does not ship is dropped at fire time and named in the run's report, not refused here.
 - `enabled` (boolean) — Defaults to true. A disabled entry keeps its steps, stops firing, and is never counted as missed.
 - `color` (string) — The calendar dot's colour: slate, blue, green, violet, red, amber, or a #rrggbb hex. Random when omitted.
 
@@ -1983,7 +2018,7 @@ The vocabulary a skill is written in: tool packs, entry tabs, shelf ids
 
 - MCP tool: `argus_skills_schema`
 
-The vocabulary an assistant skill is written in. Call this before argus_save_skill rather than guessing: it returns the tool PACK names a skill may claim (with the tools in each), the tab ids that may be claimed as entry tabs and who holds each one, every knowledge-base article id available for the reference shelf, and the field limits. Every tab is held by a built-in and a custom skill outranks one, so `claimedBy` is context rather than a blocklist -- only a tab held by another CUSTOM skill is refused. The same role argus_automation_schema plays for steps.
+The vocabulary an assistant skill is written in. Call this before argus_save_skill rather than guessing: it returns the tool PACK names a skill may claim (with the tools in each) and how many it may hold at once, the tab ids that may be claimed as entry tabs and who holds each one, every knowledge-base article id available for the reference shelf, and the field limits. Every tab is held by a built-in and a custom skill outranks one, so `claimedBy` is context rather than a blocklist -- only a tab held by another CUSTOM skill is refused. The same role argus_automation_schema plays for steps.
 
 ```sh
 curl -X GET "http://127.0.0.1:39219/v1/skills/schema" \
@@ -2011,7 +2046,7 @@ Read one skill, including its full brief
 
 - MCP tool: `argus_get_skill`
 
-Read one skill in the shape argus_save_skill accepts: instructions, examples, entry tabs, reference shelf and tool pack. Read before editing -- a save replaces the whole document, so an unread field is a field you will erase.
+Read one skill in the shape argus_save_skill accepts: instructions, examples, entry tabs, reference shelf and tool packs. Read before editing -- a save replaces the whole document, so an unread field is a field you will erase.
 
 Fields:
 - `skillId` (string, required) — From argus_list_skills.
@@ -2030,7 +2065,7 @@ Create a custom skill, or edit a built-in one
 - MCP tool: `argus_save_skill`
 - Key scope: needs a key with no folder scope. Automations are shared across every folder and have none of their own, so a folder-scoped key may run them but may not author them.
 
-Create or edit an assistant skill. Omit skillId to create (the id is slugged from the title and returned); title and instructions are required then. Pass a built-in's id to edit it -- that writes a local override, and only title, blurb, instructions, examples and docs apply; sending toolPack or entryTabs for a built-in is refused, because those are code-defined. EVERY FIELD YOU SEND REPLACES THAT FIELD and fields you omit are left as they are, so call argus_get_skill first and send only what changes; an empty examples array deletes them. toolPack must be one of the packs argus_skills_schema lists; it is the ONLY way a skill gets tools, and naming tools directly is not possible by design. Unknown doc ids and already-claimed tabs are dropped and reported back in `dropped` rather than failing the call. THIS CALL BLOCKS: it raises an approve-or-deny card in the app naming your key, and returns 403 if the user denies or lets it lapse.
+Create or edit an assistant skill. Omit skillId to create (the id is slugged from the title and returned); title and instructions are required then. Pass a built-in's id to edit it -- that writes a local override, and only title, blurb, instructions, examples and docs apply; sending toolPacks or entryTabs for a built-in is refused, because those are code-defined. EVERY FIELD YOU SEND REPLACES THAT FIELD and fields you omit are left as they are, so call argus_get_skill first and send only what changes; an empty examples array deletes them. toolPacks must be pack names argus_skills_schema lists, up to 3 of them, and the skill gets the union of their tools; packs are the ONLY way a skill gets tools, and naming tools directly is not possible by design. Unknown doc ids and already-claimed tabs are dropped and reported back in `dropped` rather than failing the call. THIS CALL BLOCKS: it raises an approve-or-deny card in the app naming your key, and returns 403 if the user denies or lets it lapse.
 
 Fields:
 - `skillId` (string) — Omit to create a custom skill. A built-in's id edits that built-in.
@@ -2038,7 +2073,8 @@ Fields:
 - `blurb` (string) — One line, up to 200 characters. The ONLY part always in the assistant's context -- it is what the model reads to decide the skill applies, so write it as a routing decision, not a summary.
 - `instructions` (string) — The working brief. Required when CREATING; omit it when editing and the current brief is kept. Never hand-write a reference shelf or an example list into it -- both are appended from the fields below.
 - `examples` (strings) — Two to four verbatim requests in the user's voice, one line each, up to 120 characters.
-- `toolPack` (string) — A pack name from argus_skills_schema. Absent means documentation and navigation only. Custom skills only.
+- `toolPacks` (strings) — Up to 3 pack names from argus_skills_schema. The skill gets the union of their tools. Absent means documentation and navigation only. Custom skills only.
+- `toolPack` (string) — The single-pack field toolPacks replaced. Still accepted, and read as a one-element list.
 - `entryTabs` (strings) — Tab ids this skill is suggested on, taking the tab from whichever built-in covers it. Only a tab another CUSTOM skill already holds is dropped. Custom skills only.
 - `docs` (strings) — Knowledge-base article ids for the reference shelf, e.g. concepts/proxies. Ids the KB does not have are dropped.
 - `hidden` (boolean) — Built-ins only: true removes the skill from the assistant entirely. Undo it with argus_delete_skill on the same id.
@@ -2047,7 +2083,7 @@ Fields:
 curl -X POST "http://127.0.0.1:39219/v1/skills/save" \
   -H "Authorization: Bearer <YOUR_API_KEY>" \
   -H "Content-Type: application/json" \
-  -d '{ "title": "Warm-up runs", "blurb": "Plan and check profile warm-up passes.", "instructions": "You are now...", "examples": ["Warm up my five new profiles"], "toolPack": "profiles", "docs": ["concepts/profiles-fingerprints"] }'
+  -d '{ "title": "Warm-up runs", "blurb": "Plan and check profile warm-up passes.", "instructions": "You are now...", "examples": ["Warm up my five new profiles"], "toolPacks": ["profiles", "browser"], "docs": ["concepts/profiles-fingerprints"] }'
 ```
 
 ### POST /v1/skills/delete
@@ -2483,16 +2519,16 @@ The knowledge-base index
 
 - MCP tool: `argus_list_docs`
 
-Index the knowledge base: every article's id and one-line summary, without the bodies. Three wings -- how the app works, how to do the work, and what this workspace has learned. Read an article with argus_read_doc. Consult this before telling a user the app cannot do something.
+Index the knowledge base: every article's id and one-line summary, without the bodies. Four wings -- pages (one per screen), concepts (how each part behaves), troubleshooting (error, cause, fix) and practice (outside domain knowledge the work needs, dated, and NOT about Argus). Read an article with argus_read_doc. Consult this before telling a user the app cannot do something.
 
 Fields:
-- `wing` (string) — Narrow to one wing. All three when omitted.
+- `wing` (string) — Narrow to one wing: pages, concepts, troubleshooting or practice. All four when omitted.
 
 ```sh
 curl -X POST "http://127.0.0.1:39219/v1/kb/docs" \
   -H "Authorization: Bearer <YOUR_API_KEY>" \
   -H "Content-Type: application/json" \
-  -d '{ "wing": "app" }'
+  -d '{ "wing": "troubleshooting" }'
 ```
 
 ### POST /v1/kb/doc

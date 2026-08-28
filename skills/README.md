@@ -1,6 +1,6 @@
 # Argus assistant skills
 
-The working briefs the in-app assistant runs on. **All 20 already ship
+The working briefs the in-app assistant runs on. **All 21 already ship
 inside Argus** — they are published here to be read and adapted, not
 installed.
 
@@ -26,13 +26,14 @@ own custom skill rather than overwriting a built-in.
 | [`bulk-profile-check.json`](./bulk-profile-check.json) | _docs and navigation only_ | Check many profiles against a site (login vs feed vs suspended) and tag the outliers, dataset-first. |
 | [`fingerprint-check.json`](./fingerprint-check.json) | _docs and navigation only_ | Measure what a page inside a profile can see, score it against the declared identity, and tag the leakers. |
 | [`crypto-ops.json`](./crypto-ops.json) | _docs and navigation only_ | Airdrop and faucet sweeps, wallet hygiene, exchange balances, and withdrawals that stop for a human. |
+| [`outbound.json`](./outbound.json) | _docs and navigation only_ | Plan cold outreach: what to research, how many touches, the law, and which lists no ESP will carry. |
 | [`agent-access.json`](./agent-access.json) | _docs and navigation only_ | Connect Claude Code, Cursor or your own scripts to this workspace. |
 | [`workspace-setup.json`](./workspace-setup.json) | _docs and navigation only_ | Take a first profile end to end: proxy, cookies, launch, then scale. |
 | [`orchestrator.json`](./orchestrator.json) | _docs and navigation only_ | Split large requests: repeatable work becomes a scheduled automation, one-off work goes to one subagent or several running at once. |
 | [`skill-author.json`](./skill-author.json) | _docs and navigation only_ | Write and edit the briefs this assistant works from. |
 
-11 of the 20 use a tool set that is not one of the 9 packs Argus
+12 of the 21 use a tool set that is not one of the 9 packs Argus
 defines (`projects`, `profiles`, `browser`, `proxies`, `cookies`, `datasets`, `automations`, `schedule`, `mail`). A skill gets tools
 only by naming a pack — naming individual tools is not possible by design —
-so those 11 carry no `toolPack` and post as documentation-and-navigation
+so those 12 carry no `toolPack` and post as documentation-and-navigation
 skills. The brief is still the useful part.

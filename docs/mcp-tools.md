@@ -1,6 +1,6 @@
 # Argus MCP tools
 
-134 tools, across 124 endpoints. This is the list an MCP client receives from `tools/list`; the full request and response detail for each one is in [api-reference.md](./api-reference.md).
+136 tools, across 126 endpoints. This is the list an MCP client receives from `tools/list`; the full request and response detail for each one is in [api-reference.md](./api-reference.md).
 
 This is a local API. It listens on loopback on the machine running Argus, and nothing off that machine can reach it. There is no hosted web API.
 
@@ -56,6 +56,8 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 | Tool | Endpoint | What it does |
 | --- | --- | --- |
 | `argus_list_automations` | `GET /v1/automations` | List the org's automations, with step counts |
+| `argus_list_recipes` | `GET /v1/recipes` | List the prebuilt recipes, and which ones this workspace has set up |
+| `argus_set_up_recipe` | `POST /v1/recipes/set-up` | Create one prebuilt recipe, plus any tables it needs |
 | `argus_automation_schema` | `GET /v1/automations/schema` | The step catalogue: every step type, its fields and how they validate |
 | `argus_get_automation` | `POST /v1/automations/get` | Read one automation, including its full step tree |
 | `argus_create_automation` | `POST /v1/automations/create` | Create an automation. Steps are validated before anything is stored |
@@ -71,7 +73,7 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 | Tool | Endpoint | What it does |
 | --- | --- | --- |
 | `argus_list_schedule_entries` | `GET /v1/schedule/entries` | Every scheduled workflow in the workspace |
-| `argus_create_schedule_entry` | `POST /v1/schedule/entries/create` | Create a scheduled workflow |
+| `argus_create_schedule_entry` | `POST /v1/schedule/entries/create` | Create a scheduled workflow or AI task |
 | `argus_update_schedule_entry` | `POST /v1/schedule/entries/update` | Change a scheduled workflow's time, steps, colour or enabled state |
 | `argus_delete_schedule_entry` | `POST /v1/schedule/entries/delete` | Delete a scheduled workflow |
 | `argus_schedule_history` | `POST /v1/schedule/occurrences` | What the calendar actually ran over a range of days |

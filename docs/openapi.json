@@ -3,7 +3,7 @@
   "info": {
     "title": "The Argus local API",
     "version": "1.0.0",
-    "summary": "124 endpoints for profiles, proxies, cookies, automations and schedules, 134 of them fronted by MCP tools.",
+    "summary": "126 endpoints for profiles, proxies, cookies, automations and schedules, 136 of them fronted by MCP tools.",
     "description": "This is a local API. It listens on loopback on the machine running Argus, and nothing off that machine can reach it. There is no hosted web API.\n\nThe server starts with the Argus launcher and stops with it. Keys are created in the launcher under the API tab, may be scoped to folders, and the first call from a new client raises an approve-or-deny prompt that holds the request until it is answered.\n\nGenerated from the launcher's own route table. The human version of this document is https://www.browserargus.com/api-reference, and the same content as Markdown is https://www.browserargus.com/api-reference.md.",
     "license": {
       "name": "MIT",
@@ -3856,6 +3856,214 @@
         "x-mcp-tool": "argus_list_automations"
       }
     },
+    "/v1/recipes": {
+      "get": {
+        "operationId": "argus_list_recipes",
+        "summary": "List the prebuilt recipes, and which ones this workspace has set up",
+        "description": "List the prebuilt recipes, and which ones this workspace has set up\n\nThe prebuilt workflows that ship with Argus - 25 across eight categories on two tabs. `surface` splits them and it is the field to read first: 'scraper' means it is pointed at a target you name - a search, a URL, a profile - and the rows are the deliverable, and those are the eight on the Scraper tab (Google Maps and Instagram collectors, plus the any-site harvesters they are built out of). 'automations' means it operates your own accounts: session checks, register audits, and the dashboard readers that export a screen you are signed in to. Each entry gives its slug, the site it targets if it targets one named service, what it reads and writes, its parameters, whether it needs a signed-in profile, whether its selectors have been verified against a captured page, and whether this workspace has set it up. Read this BEFORE building a collector with argus_create_automation: if one already does the job, argus_set_up_recipe is one call instead of twelve steps.\n\nMCP tool: `argus_list_recipes`.",
+        "tags": [
+          "Automations"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_list_recipes"
+      }
+    },
+    "/v1/recipes/set-up": {
+      "post": {
+        "operationId": "argus_set_up_recipe",
+        "summary": "Create one prebuilt recipe, plus any tables it needs",
+        "description": "Create one prebuilt recipe, plus any tables it needs\n\nCreate one prebuilt workflow in this workspace, along with any tables it reads or writes that are missing. Returns the new automation id - run it with argus_run_automation. Calling it twice is safe: a recipe that is already here is returned unchanged, and its steps are never overwritten, so a workspace that edited one keeps its edits. It costs one automation slot, and a recipe sitting in Trash is refused with a 409 rather than duplicated.\n\nMCP tool: `argus_set_up_recipe`.\n\nNeeds a key with no folder scope; a folder-scoped key is refused with 403.",
+        "tags": [
+          "Automations"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_set_up_recipe",
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "slug": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "slug"
+                ]
+              },
+              "example": {
+                "slug": "<recipe slug>"
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/automations/schema": {
       "get": {
         "operationId": "argus_automation_schema",
@@ -4891,8 +5099,8 @@
     "/v1/schedule/entries/create": {
       "post": {
         "operationId": "argus_create_schedule_entry",
-        "summary": "Create a scheduled workflow",
-        "description": "Create a scheduled workflow\n\nSchedule automations to run one after another at a set time. `recurrence` is {kind, at, date?, days?, from?, until?, tz?}: kind is 'once' (with date 'YYYY-MM-DD'), 'daily', or 'weekly' (with days, 0=Sunday..6=Saturday); at is 'HH:MM' 24-hour; tz is an optional IANA zone like 'Europe/Berlin', and without it the time is read on whatever machine runs it. `from` and `until` bound a daily or weekly schedule to a date range, both 'YYYY-MM-DD' and both inclusive -- WITHOUT `until` a repeat runs forever, so set it whenever the request names a period ('next week', 'until the 30th'); a 'once' takes neither, since it already names its day. `steps` is an ordered list of {automationId, profileIds, stopOnFail}: each step runs its automation on each profile in turn, the next step starts when the last finishes, and an empty profileIds means a browserless run. Get ids from argus_list_automations and argus_list_profiles. Entries fire only while the Argus launcher is open; a time it was closed for is skipped, never caught up.\n\nMCP tool: `argus_create_schedule_entry`.\n\nNeeds a key with no folder scope; a folder-scoped key is refused with 403.",
+        "summary": "Create a scheduled workflow or AI task",
+        "description": "Create a scheduled workflow or AI task\n\nPut something on the Argus calendar. An entry is ONE of two things, and you choose by which field you send. `recurrence` is required either way: {kind, at, date?, days?, from?, until?, tz?} -- kind is 'once' (with date 'YYYY-MM-DD'), 'daily', or 'weekly' (with days, 0=Sunday..6=Saturday); at is 'HH:MM' 24-hour; tz is an optional IANA zone like 'Europe/Berlin', and without it the time is read on whatever machine runs it. `from` and `until` bound a daily or weekly schedule to a date range, both 'YYYY-MM-DD' and both inclusive -- WITHOUT `until` a repeat runs forever, so set it whenever the request names a period ('next week', 'until the 30th'); a 'once' takes neither, since it already names its day. Then send EITHER `steps` for an AUTOMATIONS workflow -- an ordered list of {automationId, profileIds, stopOnFail}, where each step runs its automation on each profile in turn, the next starts when the last finishes, and an empty profileIds means a browserless run; get ids from argus_list_automations and argus_list_profiles -- OR `prompt` for an AI TASK, which runs ONE agent turn on that instruction when it fires, using the tools the skills in `skills` carry, and reports back a sentence. Choose a workflow when the work is the same every time: it is deterministic and costs no AI tokens however often it repeats. Choose a task when the work needs a judgement or the answer IS the output ('check which proxies expire this week and tell me'); it calls a model on every run, forever. Sending both is refused. Nobody is watching when a task fires, so its prompt must stand on its own -- it cannot ask a question, and it cannot get an approval answered, so anything it writes must already be allowed by the workspace's autonomy settings. AI tasks need migration 20260844_schedule_ai_tasks; without it this answers 501. Entries fire only while the Argus launcher is open; a time it was closed for is skipped, never caught up.\n\nMCP tool: `argus_create_schedule_entry`.\n\nNeeds a key with no folder scope; a folder-scoped key is refused with 403.",
         "tags": [
           "Schedule"
         ],
@@ -5001,7 +5209,18 @@
                       "type": "object",
                       "additionalProperties": true
                     },
-                    "description": "Ordered [{automationId, profileIds: string[], stopOnFail: boolean}]. At least one."
+                    "description": "Makes this an automations workflow. Ordered [{automationId, profileIds: string[], stopOnFail: boolean}]. At least one. Required unless `prompt` is sent instead."
+                  },
+                  "prompt": {
+                    "type": "string",
+                    "description": "Makes this an AI task rather than a workflow. The instruction to run unattended, at most 4000 characters. Send this OR `steps`, never both."
+                  },
+                  "skills": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "For an AI task: skill ids whose tools it may use, at most 8. Omit or send [] for the assistant's default tools. An id this build does not ship is dropped at fire time and named in the run's report, not refused here."
                   },
                   "enabled": {
                     "type": "boolean",
@@ -5014,8 +5233,7 @@
                 },
                 "required": [
                   "name",
-                  "recurrence",
-                  "steps"
+                  "recurrence"
                 ]
               },
               "example": {
@@ -10132,7 +10350,7 @@
       "get": {
         "operationId": "argus_skills_schema",
         "summary": "The vocabulary a skill is written in: tool packs, entry tabs, shelf ids",
-        "description": "The vocabulary a skill is written in: tool packs, entry tabs, shelf ids\n\nThe vocabulary an assistant skill is written in. Call this before argus_save_skill rather than guessing: it returns the tool PACK names a skill may claim (with the tools in each), the tab ids that may be claimed as entry tabs and who holds each one, every knowledge-base article id available for the reference shelf, and the field limits. Every tab is held by a built-in and a custom skill outranks one, so `claimedBy` is context rather than a blocklist -- only a tab held by another CUSTOM skill is refused. The same role argus_automation_schema plays for steps.\n\nMCP tool: `argus_skills_schema`.",
+        "description": "The vocabulary a skill is written in: tool packs, entry tabs, shelf ids\n\nThe vocabulary an assistant skill is written in. Call this before argus_save_skill rather than guessing: it returns the tool PACK names a skill may claim (with the tools in each) and how many it may hold at once, the tab ids that may be claimed as entry tabs and who holds each one, every knowledge-base article id available for the reference shelf, and the field limits. Every tab is held by a built-in and a custom skill outranks one, so `claimedBy` is context rather than a blocklist -- only a tab held by another CUSTOM skill is refused. The same role argus_automation_schema plays for steps.\n\nMCP tool: `argus_skills_schema`.",
         "tags": [
           "Skills"
         ],
@@ -10318,7 +10536,7 @@
       "post": {
         "operationId": "argus_get_skill",
         "summary": "Read one skill, including its full brief",
-        "description": "Read one skill, including its full brief\n\nRead one skill in the shape argus_save_skill accepts: instructions, examples, entry tabs, reference shelf and tool pack. Read before editing -- a save replaces the whole document, so an unread field is a field you will erase.\n\nMCP tool: `argus_get_skill`.",
+        "description": "Read one skill, including its full brief\n\nRead one skill in the shape argus_save_skill accepts: instructions, examples, entry tabs, reference shelf and tool packs. Read before editing -- a save replaces the whole document, so an unread field is a field you will erase.\n\nMCP tool: `argus_get_skill`.",
         "tags": [
           "Skills"
         ],
@@ -10433,7 +10651,7 @@
       "post": {
         "operationId": "argus_save_skill",
         "summary": "Create a custom skill, or edit a built-in one",
-        "description": "Create a custom skill, or edit a built-in one\n\nCreate or edit an assistant skill. Omit skillId to create (the id is slugged from the title and returned); title and instructions are required then. Pass a built-in's id to edit it -- that writes a local override, and only title, blurb, instructions, examples and docs apply; sending toolPack or entryTabs for a built-in is refused, because those are code-defined. EVERY FIELD YOU SEND REPLACES THAT FIELD and fields you omit are left as they are, so call argus_get_skill first and send only what changes; an empty examples array deletes them. toolPack must be one of the packs argus_skills_schema lists; it is the ONLY way a skill gets tools, and naming tools directly is not possible by design. Unknown doc ids and already-claimed tabs are dropped and reported back in `dropped` rather than failing the call. THIS CALL BLOCKS: it raises an approve-or-deny card in the app naming your key, and returns 403 if the user denies or lets it lapse.\n\nMCP tool: `argus_save_skill`.\n\nSkills are one document per workspace and apply to every folder's assistant, so a folder scope has nothing to narrow here. Use an unscoped key to author one.\n\nThis call blocks while an approve-or-deny card is shown in the launcher, and answers 403 if it is denied or allowed to lapse.",
+        "description": "Create a custom skill, or edit a built-in one\n\nCreate or edit an assistant skill. Omit skillId to create (the id is slugged from the title and returned); title and instructions are required then. Pass a built-in's id to edit it -- that writes a local override, and only title, blurb, instructions, examples and docs apply; sending toolPacks or entryTabs for a built-in is refused, because those are code-defined. EVERY FIELD YOU SEND REPLACES THAT FIELD and fields you omit are left as they are, so call argus_get_skill first and send only what changes; an empty examples array deletes them. toolPacks must be pack names argus_skills_schema lists, up to 3 of them, and the skill gets the union of their tools; packs are the ONLY way a skill gets tools, and naming tools directly is not possible by design. Unknown doc ids and already-claimed tabs are dropped and reported back in `dropped` rather than failing the call. THIS CALL BLOCKS: it raises an approve-or-deny card in the app naming your key, and returns 403 if the user denies or lets it lapse.\n\nMCP tool: `argus_save_skill`.\n\nSkills are one document per workspace and apply to every folder's assistant, so a folder scope has nothing to narrow here. Use an unscoped key to author one.\n\nThis call blocks while an approve-or-deny card is shown in the launcher, and answers 403 if it is denied or allowed to lapse.",
         "tags": [
           "Skills"
         ],
@@ -10552,9 +10770,16 @@
                     },
                     "description": "Two to four verbatim requests in the user's voice, one line each, up to 120 characters."
                   },
+                  "toolPacks": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Up to 3 pack names from argus_skills_schema. The skill gets the union of their tools. Absent means documentation and navigation only. Custom skills only."
+                  },
                   "toolPack": {
                     "type": "string",
-                    "description": "A pack name from argus_skills_schema. Absent means documentation and navigation only. Custom skills only."
+                    "description": "The single-pack field toolPacks replaced. Still accepted, and read as a one-element list."
                   },
                   "entryTabs": {
                     "type": "array",
@@ -10583,7 +10808,10 @@
                 "examples": [
                   "Warm up my five new profiles"
                 ],
-                "toolPack": "profiles",
+                "toolPacks": [
+                  "profiles",
+                  "browser"
+                ],
                 "docs": [
                   "concepts/profiles-fingerprints"
                 ]
@@ -14290,7 +14518,7 @@
       "post": {
         "operationId": "argus_list_docs",
         "summary": "The knowledge-base index",
-        "description": "The knowledge-base index\n\nIndex the knowledge base: every article's id and one-line summary, without the bodies. Three wings -- how the app works, how to do the work, and what this workspace has learned. Read an article with argus_read_doc. Consult this before telling a user the app cannot do something.\n\nMCP tool: `argus_list_docs`.",
+        "description": "The knowledge-base index\n\nIndex the knowledge base: every article's id and one-line summary, without the bodies. Four wings -- pages (one per screen), concepts (how each part behaves), troubleshooting (error, cause, fix) and practice (outside domain knowledge the work needs, dated, and NOT about Argus). Read an article with argus_read_doc. Consult this before telling a user the app cannot do something.\n\nMCP tool: `argus_list_docs`.",
         "tags": [
           "Knowledge base"
         ],
@@ -14386,12 +14614,12 @@
                 "properties": {
                   "wing": {
                     "type": "string",
-                    "description": "Narrow to one wing. All three when omitted."
+                    "description": "Narrow to one wing: pages, concepts, troubleshooting or practice. All four when omitted."
                   }
                 }
               },
               "example": {
-                "wing": "app"
+                "wing": "troubleshooting"
               }
             }
           }
