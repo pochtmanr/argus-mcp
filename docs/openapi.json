@@ -3,7 +3,7 @@
   "info": {
     "title": "The Argus local API",
     "version": "1.0.0",
-    "summary": "126 endpoints for profiles, proxies, cookies, automations and schedules, 136 of them fronted by MCP tools.",
+    "summary": "131 endpoints for profiles, proxies, cookies, automations and schedules, 141 of them fronted by MCP tools.",
     "description": "This is a local API. It listens on loopback on the machine running Argus, and nothing off that machine can reach it. There is no hosted web API.\n\nThe server starts with the Argus launcher and stops with it. Keys are created in the launcher under the API tab, may be scoped to folders, and the first call from a new client raises an approve-or-deny prompt that holds the request until it is answered.\n\nGenerated from the launcher's own route table. The human version of this document is https://www.browserargus.com/api-reference, and the same content as Markdown is https://www.browserargus.com/api-reference.md.",
     "license": {
       "name": "MIT",
@@ -45,6 +45,9 @@
     {
       "name": "Automations",
       "description": "Author and run automations. Creating, changing and deleting one needs a key with no folder scope, because automations are shared across every folder and have none of their own. A folder-scoped key may still list, read and run them."
+    },
+    {
+      "name": "Scrapers"
     },
     {
       "name": "Schedule",
@@ -3860,7 +3863,7 @@
       "get": {
         "operationId": "argus_list_recipes",
         "summary": "List the prebuilt recipes, and which ones this workspace has set up",
-        "description": "List the prebuilt recipes, and which ones this workspace has set up\n\nThe prebuilt workflows that ship with Argus - 25 across eight categories on two tabs. `surface` splits them and it is the field to read first: 'scraper' means it is pointed at a target you name - a search, a URL, a profile - and the rows are the deliverable, and those are the eight on the Scraper tab (Google Maps and Instagram collectors, plus the any-site harvesters they are built out of). 'automations' means it operates your own accounts: session checks, register audits, and the dashboard readers that export a screen you are signed in to. Each entry gives its slug, the site it targets if it targets one named service, what it reads and writes, its parameters, whether it needs a signed-in profile, whether its selectors have been verified against a captured page, and whether this workspace has set it up. Read this BEFORE building a collector with argus_create_automation: if one already does the job, argus_set_up_recipe is one call instead of twelve steps.\n\nMCP tool: `argus_list_recipes`.",
+        "description": "List the prebuilt recipes, and which ones this workspace has set up\n\nThe prebuilt workflows that ship with Argus - 19 across six categories, and every one of them is an AUTOMATION that operates an account this workspace is signed in to: it drives a real browser in one of its profiles (session checks, ad-account and offer checks, an outbound email sequence, crypto sweeps, dashboard exports). Each entry gives its slug, the site it targets if it targets one named service, what it reads and writes, its parameters, whether it needs a signed-in profile, whether its selectors have been verified against a captured page, and whether this workspace has set it up. Read this BEFORE building a collector with argus_create_automation: if one already does the job, argus_set_up_recipe is one call instead of twelve steps. SCRAPERS ARE NOT HERE and are not automations: a scraper is input in, one dataset out and no browser at all, it lives on its own tab with its own record, and it costs none of the plan's automation slots. argus_list_scrapers is that catalogue and argus_run_scraper runs one.\n\nMCP tool: `argus_list_recipes`.",
         "tags": [
           "Automations"
         ],
@@ -4058,6 +4061,574 @@
               },
               "example": {
                 "slug": "<recipe slug>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/scrapers": {
+      "get": {
+        "operationId": "argus_list_scrapers",
+        "summary": "The scraper catalogue, and what this workspace has run",
+        "description": "The scraper catalogue, and what this workspace has run\n\nThe prebuilt collectors that ship with Argus, one card per service. A SCRAPER is not an automation: it reads somebody else's public pages over http, signed out, with NO BROWSER at all, and its whole output is one new dataset per run. It costs none of the plan's automation slots. Read this BEFORE building a workflow with argus_create_automation whenever the ask is 'collect X from Y' - if a card already covers the site, argus_run_scraper is one call instead of twelve steps. Each entry gives its kind (the id every other scraper tool takes), what it collects from, how many columns the table will have, and how this workspace has done with it so far. For workflows that operate the user's OWN accounts, see argus_list_recipes instead.\n\nMCP tool: `argus_list_scrapers`.",
+        "tags": [
+          "Scrapers"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_list_scrapers"
+      }
+    },
+    "/v1/scrapers/get": {
+      "post": {
+        "operationId": "argus_get_scraper",
+        "summary": "One scraper's form and the columns it produces",
+        "description": "One scraper's form and the columns it produces\n\nOne scraper's form: every parameter it asks for with its kind, whether it is required and its options, the groups they are shown in, and the columns the dataset will have. Call this before argus_run_scraper - the parameter names are not guessable, and a group's hint is where the relationship between two of them is written down (a place given either as a sentence or as four address fields, never both).\n\nMCP tool: `argus_get_scraper`.",
+        "tags": [
+          "Scrapers"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_get_scraper",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "example": {
+                "kind": "<scraper kind>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/scrapers/sample": {
+      "post": {
+        "operationId": "argus_sample_scraper",
+        "summary": "A dry run: one page, nothing written",
+        "description": "A dry run: one page, nothing written\n\nA dry run of one scraper: one page of one search, no contact enrichment, and NOTHING WRITTEN - no dataset, no rows, no run record. What it answers is which columns actually came back with values, which is how an http collector fails: not with an error, but with a table of half-blank rows nobody notices until after a full run. Do this before argus_run_scraper whenever any answer is a guess.\n\nMCP tool: `argus_sample_scraper`.",
+        "tags": [
+          "Scrapers"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_sample_scraper",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string"
+                  },
+                  "inputs": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "The form's answers, keyed by parameter name as argus_get_scraper lists them. Values are strings; a boolean parameter takes \"true\" or \"false\" and a list takes one entry per line."
+                  }
+                },
+                "required": [
+                  "kind",
+                  "inputs"
+                ]
+              },
+              "example": {
+                "kind": "<scraper kind>",
+                "inputs": {
+                  "<parameter>": "<value>"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/scrapers/run": {
+      "post": {
+        "operationId": "argus_run_scraper",
+        "summary": "Run a scraper; returns a run id immediately",
+        "description": "Run a scraper; returns a run id immediately\n\nRun a scraper for real: collect, filter, optionally visit each row's own site for contact details, then write everything into a NEW dataset in the scraper's folder. Returns a run id IMMEDIATELY and the run continues in the background - it takes minutes and makes a real request per page, so poll argus_scraper_runs to learn how it ended. A new table every run: nothing is overwritten and two searches never mix. Call argus_sample_scraper first when the answers are a guess.\n\nMCP tool: `argus_run_scraper`.\n\nA scraper is an org-wide object with its own record and its own dataset folder, and it is not filed under any profile folder -- so a key granted one folder has nothing coherent to narrow here. Use an unscoped key to run one.",
+        "tags": [
+          "Scrapers"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_run_scraper",
+        "x-key-scope": "unscoped",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string"
+                  },
+                  "inputs": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "The form's answers, keyed by parameter name as argus_get_scraper lists them. Values are strings; a boolean parameter takes \"true\" or \"false\" and a list takes one entry per line."
+                  }
+                },
+                "required": [
+                  "kind",
+                  "inputs"
+                ]
+              },
+              "example": {
+                "kind": "<scraper kind>",
+                "inputs": {
+                  "<parameter>": "<value>"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/scrapers/runs": {
+      "post": {
+        "operationId": "argus_scraper_runs",
+        "summary": "Past runs of one scraper, newest first",
+        "description": "Past runs of one scraper, newest first\n\nThis workspace's past runs of one scraper, newest first: status (running, ok, partial, failed, cancelled), rows written, requests made, the answers each used, and the dataset it produced. This is how to learn how a run started with argus_run_scraper ended.\n\nMCP tool: `argus_scraper_runs`.",
+        "tags": [
+          "Scrapers"
+        ],
+        "responses": {
+          "200": {
+            "description": "The call was accepted. `status` is true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body failed validation. The message names the exact path that failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No bearer token, or one that does not match a stored key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key is scoped to folders that do not contain that profile, or it is trying to author an automation while folder-scoped. Not a missing profile, and not worth retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such route.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "A documented route that is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Argus Launcher is not open. Nothing can answer until it is.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The launcher window did not answer in time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        },
+        "x-mcp-tool": "argus_scraper_runs",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "example": {
+                "kind": "<scraper kind>"
               }
             }
           }
@@ -8795,7 +9366,7 @@
       "get": {
         "operationId": "argus_list_connectors",
         "summary": "The workspace's connectors, and the field list of every kind",
-        "description": "The workspace's connectors, and the field list of every kind\n\nThe AI, message, data and captcha connectors this workspace has, and the catalogue of kinds one can be created from. Call this before writing a notify, aiPrompt, aiCheck, aiAgent, saveRows, loadRows or solveCaptcha step, or setting notifyConnectorId -- those fields take an id from here and there is no other way to learn one. A step must name a connector of the matching category: 'ai' for the AI steps and an aiAgent's chat model, 'message' for notify and an agent's message or approval tools, 'data' for saveRows, loadRows and an agent's data or vector tools, 'captcha' for solveCaptcha. Every connector carries its stored `config`, credentials included -- an API key reads back everything it can write, so treat a key as equivalent to the credentials behind it.\n\nMCP tool: `argus_list_connectors`.",
+        "description": "The workspace's connectors, and the field list of every kind\n\nThe AI, message, data, captcha, broadcast and verification connectors this workspace has, and the catalogue of kinds one can be created from. Call this before writing a notify, aiPrompt, aiCheck, aiAgent, saveRows, loadRows or solveCaptcha step, or setting notifyConnectorId -- those fields take an id from here and there is no other way to learn one. A step must name a connector of the matching category: 'ai' for the AI steps and an aiAgent's chat model, 'message' for notify and an agent's message or approval tools, 'data' for saveRows, loadRows and an agent's data or vector tools, 'captcha' for solveCaptcha, 'broadcast' for sendBroadcast -- and only for sendBroadcast, because a broadcast connector mails a list rather than telling the workspace something -- and 'verify' for verifyEmail, which spends a credit per address checked. Every connector carries its stored `config`, credentials included -- an API key reads back everything it can write, so treat a key as equivalent to the credentials behind it.\n\nMCP tool: `argus_list_connectors`.",
         "tags": [
           "Connectors"
         ],

@@ -5,7 +5,7 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 - Base URL: `http://127.0.0.1:39219`
 - Auth: `Authorization: Bearer <YOUR_API_KEY>`
 - Bodies: `Content-Type: application/json`
-- Surface: 126 endpoints, 136 agent tools
+- Surface: 131 endpoints, 141 agent tools
 
 ## Keys and approval
 
@@ -703,7 +703,7 @@ List the prebuilt recipes, and which ones this workspace has set up
 
 - MCP tool: `argus_list_recipes`
 
-The prebuilt workflows that ship with Argus - 25 across eight categories on two tabs. `surface` splits them and it is the field to read first: 'scraper' means it is pointed at a target you name - a search, a URL, a profile - and the rows are the deliverable, and those are the eight on the Scraper tab (Google Maps and Instagram collectors, plus the any-site harvesters they are built out of). 'automations' means it operates your own accounts: session checks, register audits, and the dashboard readers that export a screen you are signed in to. Each entry gives its slug, the site it targets if it targets one named service, what it reads and writes, its parameters, whether it needs a signed-in profile, whether its selectors have been verified against a captured page, and whether this workspace has set it up. Read this BEFORE building a collector with argus_create_automation: if one already does the job, argus_set_up_recipe is one call instead of twelve steps.
+The prebuilt workflows that ship with Argus - 19 across six categories, and every one of them is an AUTOMATION that operates an account this workspace is signed in to: it drives a real browser in one of its profiles (session checks, ad-account and offer checks, an outbound email sequence, crypto sweeps, dashboard exports). Each entry gives its slug, the site it targets if it targets one named service, what it reads and writes, its parameters, whether it needs a signed-in profile, whether its selectors have been verified against a captured page, and whether this workspace has set it up. Read this BEFORE building a collector with argus_create_automation: if one already does the job, argus_set_up_recipe is one call instead of twelve steps. SCRAPERS ARE NOT HERE and are not automations: a scraper is input in, one dataset out and no browser at all, it lives on its own tab with its own record, and it costs none of the plan's automation slots. argus_list_scrapers is that catalogue and argus_run_scraper runs one.
 
 ```sh
 curl -X GET "http://127.0.0.1:39219/v1/recipes" \
@@ -921,6 +921,97 @@ curl -X POST "http://127.0.0.1:39219/v1/automations/summary" \
   -H "Authorization: Bearer <YOUR_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{ "automationId": "<id>" }'
+```
+
+## Scrapers
+
+### GET /v1/scrapers
+
+The scraper catalogue, and what this workspace has run
+
+- MCP tool: `argus_list_scrapers`
+
+The prebuilt collectors that ship with Argus, one card per service. A SCRAPER is not an automation: it reads somebody else's public pages over http, signed out, with NO BROWSER at all, and its whole output is one new dataset per run. It costs none of the plan's automation slots. Read this BEFORE building a workflow with argus_create_automation whenever the ask is 'collect X from Y' - if a card already covers the site, argus_run_scraper is one call instead of twelve steps. Each entry gives its kind (the id every other scraper tool takes), what it collects from, how many columns the table will have, and how this workspace has done with it so far. For workflows that operate the user's OWN accounts, see argus_list_recipes instead.
+
+```sh
+curl -X GET "http://127.0.0.1:39219/v1/scrapers" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json"
+```
+
+### POST /v1/scrapers/get
+
+One scraper's form and the columns it produces
+
+- MCP tool: `argus_get_scraper`
+
+One scraper's form: every parameter it asks for with its kind, whether it is required and its options, the groups they are shown in, and the columns the dataset will have. Call this before argus_run_scraper - the parameter names are not guessable, and a group's hint is where the relationship between two of them is written down (a place given either as a sentence or as four address fields, never both).
+
+Fields:
+- `kind` (string, required)
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/scrapers/get" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "kind": "<scraper kind>" }'
+```
+
+### POST /v1/scrapers/sample
+
+A dry run: one page, nothing written
+
+- MCP tool: `argus_sample_scraper`
+
+A dry run of one scraper: one page of one search, no contact enrichment, and NOTHING WRITTEN - no dataset, no rows, no run record. What it answers is which columns actually came back with values, which is how an http collector fails: not with an error, but with a table of half-blank rows nobody notices until after a full run. Do this before argus_run_scraper whenever any answer is a guess.
+
+Fields:
+- `kind` (string, required)
+- `inputs` (object, required) — The form's answers, keyed by parameter name as argus_get_scraper lists them. Values are strings; a boolean parameter takes "true" or "false" and a list takes one entry per line.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/scrapers/sample" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "kind": "<scraper kind>", "inputs": { "<parameter>": "<value>" } }'
+```
+
+### POST /v1/scrapers/run
+
+Run a scraper; returns a run id immediately
+
+- MCP tool: `argus_run_scraper`
+- Key scope: needs a key with no folder scope. Automations are shared across every folder and have none of their own, so a folder-scoped key may run them but may not author them.
+
+Run a scraper for real: collect, filter, optionally visit each row's own site for contact details, then write everything into a NEW dataset in the scraper's folder. Returns a run id IMMEDIATELY and the run continues in the background - it takes minutes and makes a real request per page, so poll argus_scraper_runs to learn how it ended. A new table every run: nothing is overwritten and two searches never mix. Call argus_sample_scraper first when the answers are a guess.
+
+Fields:
+- `kind` (string, required)
+- `inputs` (object, required) — The form's answers, keyed by parameter name as argus_get_scraper lists them. Values are strings; a boolean parameter takes "true" or "false" and a list takes one entry per line.
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/scrapers/run" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "kind": "<scraper kind>", "inputs": { "<parameter>": "<value>" } }'
+```
+
+### POST /v1/scrapers/runs
+
+Past runs of one scraper, newest first
+
+- MCP tool: `argus_scraper_runs`
+
+This workspace's past runs of one scraper, newest first: status (running, ok, partial, failed, cancelled), rows written, requests made, the answers each used, and the dataset it produced. This is how to learn how a run started with argus_run_scraper ended.
+
+Fields:
+- `kind` (string, required)
+
+```sh
+curl -X POST "http://127.0.0.1:39219/v1/scrapers/runs" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "kind": "<scraper kind>" }'
 ```
 
 ## Schedule
@@ -1759,7 +1850,7 @@ The workspace's connectors, and the field list of every kind
 
 - MCP tool: `argus_list_connectors`
 
-The AI, message, data and captcha connectors this workspace has, and the catalogue of kinds one can be created from. Call this before writing a notify, aiPrompt, aiCheck, aiAgent, saveRows, loadRows or solveCaptcha step, or setting notifyConnectorId -- those fields take an id from here and there is no other way to learn one. A step must name a connector of the matching category: 'ai' for the AI steps and an aiAgent's chat model, 'message' for notify and an agent's message or approval tools, 'data' for saveRows, loadRows and an agent's data or vector tools, 'captcha' for solveCaptcha. Every connector carries its stored `config`, credentials included -- an API key reads back everything it can write, so treat a key as equivalent to the credentials behind it.
+The AI, message, data, captcha, broadcast and verification connectors this workspace has, and the catalogue of kinds one can be created from. Call this before writing a notify, aiPrompt, aiCheck, aiAgent, saveRows, loadRows or solveCaptcha step, or setting notifyConnectorId -- those fields take an id from here and there is no other way to learn one. A step must name a connector of the matching category: 'ai' for the AI steps and an aiAgent's chat model, 'message' for notify and an agent's message or approval tools, 'data' for saveRows, loadRows and an agent's data or vector tools, 'captcha' for solveCaptcha, 'broadcast' for sendBroadcast -- and only for sendBroadcast, because a broadcast connector mails a list rather than telling the workspace something -- and 'verify' for verifyEmail, which spends a credit per address checked. Every connector carries its stored `config`, credentials included -- an API key reads back everything it can write, so treat a key as equivalent to the credentials behind it.
 
 ```sh
 curl -X GET "http://127.0.0.1:39219/v1/connectors" \

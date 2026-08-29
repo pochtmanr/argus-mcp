@@ -22,7 +22,7 @@ own custom skill rather than overwriting a built-in.
 | [`mail.json`](./mail.json) | `mail` pack | Read mail, wait for a confirmation code or link, draft into an open compose card, and send once approved. |
 | [`session-hygiene.json`](./session-hygiene.json) | _docs and navigation only_ | Fix cookie sets and proxies shared across too many profiles. |
 | [`troubleshooter.json`](./troubleshooter.json) | _docs and navigation only_ | Diagnose a real failure from its actual error text and name the fix. |
-| [`data-collection.json`](./data-collection.json) | _docs and navigation only_ | Plan how a site's data lands in a dataset, and build the collector that fills it. |
+| [`data-collection.json`](./data-collection.json) | `scrapers` pack | Plan how a site's data lands in a dataset, and build the collector that fills it. |
 | [`bulk-profile-check.json`](./bulk-profile-check.json) | _docs and navigation only_ | Check many profiles against a site (login vs feed vs suspended) and tag the outliers, dataset-first. |
 | [`fingerprint-check.json`](./fingerprint-check.json) | _docs and navigation only_ | Measure what a page inside a profile can see, score it against the declared identity, and tag the leakers. |
 | [`crypto-ops.json`](./crypto-ops.json) | _docs and navigation only_ | Airdrop and faucet sweeps, wallet hygiene, exchange balances, and withdrawals that stop for a human. |
@@ -32,8 +32,8 @@ own custom skill rather than overwriting a built-in.
 | [`orchestrator.json`](./orchestrator.json) | _docs and navigation only_ | Split large requests: repeatable work becomes a scheduled automation, one-off work goes to one subagent or several running at once. |
 | [`skill-author.json`](./skill-author.json) | _docs and navigation only_ | Write and edit the briefs this assistant works from. |
 
-12 of the 21 use a tool set that is not one of the 9 packs Argus
-defines (`projects`, `profiles`, `browser`, `proxies`, `cookies`, `datasets`, `automations`, `schedule`, `mail`). A skill gets tools
+11 of the 21 use a tool set that is not one of the 10 packs Argus
+defines (`projects`, `profiles`, `browser`, `proxies`, `cookies`, `datasets`, `scrapers`, `automations`, `schedule`, `mail`). A skill gets tools
 only by naming a pack — naming individual tools is not possible by design —
-so those 12 carry no `toolPack` and post as documentation-and-navigation
+so those 11 carry no `toolPack` and post as documentation-and-navigation
 skills. The brief is still the useful part.

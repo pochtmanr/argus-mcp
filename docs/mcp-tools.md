@@ -1,6 +1,6 @@
 # Argus MCP tools
 
-136 tools, across 126 endpoints. This is the list an MCP client receives from `tools/list`; the full request and response detail for each one is in [api-reference.md](./api-reference.md).
+141 tools, across 131 endpoints. This is the list an MCP client receives from `tools/list`; the full request and response detail for each one is in [api-reference.md](./api-reference.md).
 
 This is a local API. It listens on loopback on the machine running Argus, and nothing off that machine can reach it. There is no hosted web API.
 
@@ -67,6 +67,16 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 | `argus_automation_runs` | `POST /v1/automations/runs` | Recent runs of one automation, with status and errors |
 | `argus_search_automations` | `POST /v1/automations/search` | Find automations by name, step or connector |
 | `argus_automation_summary` | `POST /v1/automations/summary` | What one automation does, without its full document |
+
+## Scrapers
+
+| Tool | Endpoint | What it does |
+| --- | --- | --- |
+| `argus_list_scrapers` | `GET /v1/scrapers` | The scraper catalogue, and what this workspace has run |
+| `argus_get_scraper` | `POST /v1/scrapers/get` | One scraper's form and the columns it produces |
+| `argus_sample_scraper` | `POST /v1/scrapers/sample` | A dry run: one page, nothing written |
+| `argus_run_scraper` | `POST /v1/scrapers/run` | Run a scraper; returns a run id immediately |
+| `argus_scraper_runs` | `POST /v1/scrapers/runs` | Past runs of one scraper, newest first |
 
 ## Schedule
 
