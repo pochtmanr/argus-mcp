@@ -60,6 +60,18 @@ profiles either as MCP tools or over plain HTTP.
 - **The five page-driving tools need a profile that is already open.** They
   attach over CDP to a running profile; launch it first. Every one of them takes
   `profileId`.
+- **Finish what was delegated instead of asking for it back.** "Create an
+  account", "set one up", "make a few profiles" name no username, no display
+  name and no profile name — those are yours to invent. Choose them, do the
+  whole job, report what you chose, and offer to change it afterwards. Save a
+  question for what genuinely blocks you and only the user can answer.
+- **Ask the page, not the person.** Whether a signup needs an email
+  confirmation, a phone number or a captcha is answered by submitting the form
+  and reading what comes back — not by asking in advance. And reach a form by
+  navigating the site rather than guessing its URL: `/signup`, `/register`
+  and `/createuser` are guesses, and on plenty of sites (Hacker News among them)
+  the create-account form is a second form on the *login* page, told apart from
+  the sign-in form by its fields rather than by its position.
 
 ## Projects, and the documents they carry
 

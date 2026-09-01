@@ -1,6 +1,6 @@
 # Argus assistant skills
 
-The working briefs the in-app assistant runs on. **All 21 already ship
+The working briefs the in-app assistant runs on. **All 22 already ship
 inside Argus** — they are published here to be read and adapted, not
 installed.
 
@@ -31,9 +31,10 @@ own custom skill rather than overwriting a built-in.
 | [`workspace-setup.json`](./workspace-setup.json) | _docs and navigation only_ | Take a first profile end to end: proxy, cookies, launch, then scale. |
 | [`orchestrator.json`](./orchestrator.json) | _docs and navigation only_ | Split large requests: repeatable work becomes a scheduled automation, one-off work goes to one subagent or several running at once. |
 | [`skill-author.json`](./skill-author.json) | _docs and navigation only_ | Write and edit the briefs this assistant works from. |
+| [`prompt-architect.json`](./prompt-architect.json) | _docs and navigation only_ | Turning a rough request into a precise, executable prompt before acting. |
 
-11 of the 21 use a tool set that is not one of the 10 packs Argus
+12 of the 22 use a tool set that is not one of the 10 packs Argus
 defines (`projects`, `profiles`, `browser`, `proxies`, `cookies`, `datasets`, `scrapers`, `automations`, `schedule`, `mail`). A skill gets tools
 only by naming a pack — naming individual tools is not possible by design —
-so those 11 carry no `toolPack` and post as documentation-and-navigation
+so those 12 carry no `toolPack` and post as documentation-and-navigation
 skills. The brief is still the useful part.
