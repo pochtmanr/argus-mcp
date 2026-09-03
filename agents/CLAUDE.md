@@ -109,7 +109,7 @@ acting hours in code rather than by being asked nicely.
 - **Notifications**: `argus_telegram_status`, `argus_set_telegram_pref`, `argus_set_telegram_bot`
 - **Tables**: `argus_table_columns`, `argus_set_table_columns`
 - **Skills**: `argus_skills_schema`, `argus_list_skills`, `argus_get_skill`, `argus_save_skill`, `argus_delete_skill`
-- **Driving a page**: `argus_switch_tab`, `argus_new_tab`, `argus_page_recording`, `argus_save_page_recording`, `argus_page_snapshot`, `argus_click`, `argus_type`, `argus_press_key`, `argus_scroll`, `argus_wait_for`, `argus_extract`, `argus_select_option`, `argus_list_tabs`, `argus_navigate`, `argus_read_page`, `argus_screenshot`, `argus_eval`
+- **Driving a page**: `argus_switch_tab`, `argus_new_tab`, `argus_page_recording`, `argus_save_page_recording`, `argus_page_snapshot`, `argus_click`, `argus_type`, `argus_press_key`, `argus_scroll`, `argus_wait_for`, `argus_extract`, `argus_select_option`, `argus_list_tabs`, `argus_navigate`, `argus_go_back`, `argus_reload`, `argus_read_page`, `argus_screenshot`, `argus_eval`
 - **Mail**: `argus_list_mailboxes`, `argus_list_messages`, `argus_read_message`, `argus_read_new_message`, `argus_open_compose`, `argus_list_compose`, `argus_set_compose_fields`, `argus_send_compose`, `argus_close_compose`
 - **Knowledge base**: `argus_list_docs`, `argus_read_doc`, `argus_search_docs`, `argus_get_context`, `argus_recent_errors`
 - **Connection**: `argus_connection_status`

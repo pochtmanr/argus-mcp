@@ -3,7 +3,7 @@
   "info": {
     "title": "The Argus local API",
     "version": "1.0.0",
-    "summary": "131 endpoints for profiles, proxies, cookies, automations and schedules, 141 of them fronted by MCP tools.",
+    "summary": "131 endpoints for profiles, proxies, cookies, automations and schedules, 143 of them fronted by MCP tools.",
     "description": "This is a local API. It listens on loopback on the machine running Argus, and nothing off that machine can reach it. There is no hosted web API.\n\nThe server starts with the Argus launcher and stops with it. Keys are created in the launcher under the API tab, may be scoped to folders, and the first call from a new client raises an approve-or-deny prompt that holds the request until it is answered.\n\nGenerated from the launcher's own route table. The human version of this document is https://www.browserargus.com/api-reference, and the same content as Markdown is https://www.browserargus.com/api-reference.md.",
     "license": {
       "name": "MIT",
@@ -83,7 +83,7 @@
     },
     {
       "name": "Driving a page",
-      "description": "Fourteen tools with no endpoint behind them. They attach to a profile that is already open and speak to the page directly, which is how an agent reads a page, clicks through it and takes a screenshot."
+      "description": "Sixteen tools with no endpoint behind them. They attach to a profile that is already open and speak to the page directly, which is how an agent reads a page, clicks through it and takes a screenshot."
     },
     {
       "name": "Mail"
@@ -15962,6 +15962,46 @@
         "required": [
           "profileId",
           "url"
+        ]
+      }
+    },
+    {
+      "name": "argus_go_back",
+      "group": "Driving a page",
+      "summary": "Go back, or forward, in a page's own history",
+      "description": "No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "description": "The running profile whose active page to move."
+          },
+          "direction": {
+            "type": "string",
+            "description": "back, the default, or forward."
+          }
+        },
+        "required": [
+          "profileId"
+        ]
+      }
+    },
+    {
+      "name": "argus_reload",
+      "group": "Driving a page",
+      "summary": "Reload a page and wait for it to settle",
+      "description": "No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "description": "The running profile whose active page to reload."
+          }
+        },
+        "required": [
+          "profileId"
         ]
       }
     },

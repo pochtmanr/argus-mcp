@@ -5,7 +5,7 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 - Base URL: `http://127.0.0.1:39219`
 - Auth: `Authorization: Bearer <YOUR_API_KEY>`
 - Bodies: `Content-Type: application/json`
-- Surface: 131 endpoints, 141 agent tools
+- Surface: 131 endpoints, 143 agent tools
 
 ## Keys and approval
 
@@ -2198,7 +2198,7 @@ curl -X POST "http://127.0.0.1:39219/v1/skills/delete" \
 
 ## Driving a page
 
-Fourteen tools with no endpoint behind them. They attach to a profile that is already open and speak to the page directly, which is how an agent reads a page, clicks through it and takes a screenshot.
+Sixteen tools with no endpoint behind them. They attach to a profile that is already open and speak to the page directly, which is how an agent reads a page, clicks through it and takes a screenshot.
 
 ### POST /v1/page/switch-tab
 
@@ -2395,6 +2395,25 @@ Point a page at a URL and wait for it to settle
 Fields:
 - `profileId` (string, required) — The running profile whose active page to point somewhere.
 - `url` (string, required) — Where to send the active page.
+
+### argus_go_back (MCP tool)
+
+Go back, or forward, in a page's own history
+
+- No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.
+
+Fields:
+- `profileId` (string, required) — The running profile whose active page to move.
+- `direction` (string) — back, the default, or forward.
+
+### argus_reload (MCP tool)
+
+Reload a page and wait for it to settle
+
+- No endpoint. It attaches to a profile that is already open and speaks to the page over CDP, so launch the profile first.
+
+Fields:
+- `profileId` (string, required) — The running profile whose active page to reload.
 
 ### argus_read_page (MCP tool)
 

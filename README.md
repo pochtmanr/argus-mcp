@@ -28,7 +28,7 @@ This repository is the **documentation** for that server, not the server.
 
 | Path | What it is |
 | --- | --- |
-| [`docs/api-reference.md`](./docs/api-reference.md) | All 131 endpoints and 141 tools — paths, fields, curl examples, status codes. |
+| [`docs/api-reference.md`](./docs/api-reference.md) | All 131 endpoints and 143 tools — paths, fields, curl examples, status codes. |
 | [`docs/openapi.json`](./docs/openapi.json) | The same table as an OpenAPI 3.1 spec, for generating a client. |
 | [`docs/mcp-tools.md`](./docs/mcp-tools.md) | The tool list an MCP client receives, and which endpoint each one fronts. |
 | [`skills/`](./skills) | The briefs the in-app assistant runs on, as readable JSON. |
@@ -52,7 +52,7 @@ The first call from a new client raises an approve-or-deny card in the launcher
 and blocks until you answer it.
 
 To drive it from a coding agent instead, connect an MCP client — Claude Code, Codex, Cursor, Gemini CLI, Windsurf, VS Code, Zed, OpenClaw, Hive and others are supported —
-and the 141 tools appear on their own.
+and the 143 tools appear on their own.
 
 ## About `skills/`
 

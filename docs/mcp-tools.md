@@ -1,6 +1,6 @@
 # Argus MCP tools
 
-141 tools, across 131 endpoints. This is the list an MCP client receives from `tools/list`; the full request and response detail for each one is in [api-reference.md](./api-reference.md).
+143 tools, across 131 endpoints. This is the list an MCP client receives from `tools/list`; the full request and response detail for each one is in [api-reference.md](./api-reference.md).
 
 This is a local API. It listens on loopback on the machine running Argus, and nothing off that machine can reach it. There is no hosted web API.
 
@@ -201,6 +201,8 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 | `argus_select_option` | _CDP, no endpoint_ | Choose an option in a dropdown |
 | `argus_list_tabs` | _CDP, no endpoint_ | List the open pages in a running profile |
 | `argus_navigate` | _CDP, no endpoint_ | Point a page at a URL and wait for it to settle |
+| `argus_go_back` | _CDP, no endpoint_ | Go back, or forward, in a page's own history |
+| `argus_reload` | _CDP, no endpoint_ | Reload a page and wait for it to settle |
 | `argus_read_page` | _CDP, no endpoint_ | Read a page's visible text, whole or by CSS selector |
 | `argus_screenshot` | _CDP, no endpoint_ | Screenshot a page — JPEG by default, PNG on request |
 | `argus_eval` | _CDP, no endpoint_ | Evaluate a JavaScript expression in a page and return its value |
