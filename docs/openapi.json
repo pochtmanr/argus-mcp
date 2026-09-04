@@ -2044,7 +2044,7 @@
       "post": {
         "operationId": "argus_update_proxy",
         "summary": "Update a proxy",
-        "description": "Update a proxy\n\nChange an existing proxy's name, type, host, port, username or password. Only the fields you send are written. Changing the connection details clears the stored check result -- the status you saw before is stale until the next check -- and the password is stored, never returned. To re-test after a change, call argus_check_proxy.\n\nMCP tool: `argus_update_proxy`.",
+        "description": "Update a proxy\n\nChange an existing proxy's name, type, host, port, username, password or folder. Only the fields you send are written. Changing the connection details clears the stored check result -- the status you saw before is stale until the next check -- and the password is stored, never returned. To re-test after a change, call argus_check_proxy with the proxyId.\n\nMCP tool: `argus_update_proxy`.",
         "tags": [
           "Proxies"
         ],
@@ -2160,6 +2160,10 @@
                   },
                   "password": {
                     "type": "string"
+                  },
+                  "folderId": {
+                    "type": "string",
+                    "description": "Folder to file it in (argus_list_folders). Empty moves it back to All proxies. Filing only."
                   }
                 },
                 "required": [
@@ -2179,7 +2183,7 @@
       "post": {
         "operationId": "argus_check_proxy",
         "summary": "Check reachability and egress IP",
-        "description": "Check reachability and egress IP\n\nCheck a proxy's reachability and egress IP.\n\nMCP tool: `argus_check_proxy`.",
+        "description": "Check reachability and egress IP\n\nCheck a proxy's reachability and egress IP. Send proxyId to re-check a saved proxy -- the result is stored on its row, so the Proxies tab agrees with what you saw. Or send host and port (with username, password, type as needed) to probe an ad-hoc proxy without saving anything.\n\nMCP tool: `argus_check_proxy`.",
         "tags": [
           "Proxies"
         ],
@@ -2267,19 +2271,23 @@
         },
         "x-mcp-tool": "argus_check_proxy",
         "requestBody": {
-          "required": true,
+          "required": false,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
                 "properties": {
+                  "proxyId": {
+                    "type": "string",
+                    "description": "A saved proxy to re-check by id (argus_list_proxies). The result is stored on the row. When sent, the connection fields below are ignored."
+                  },
                   "host": {
                     "type": "string",
-                    "description": "The proxy's address."
+                    "description": "The proxy's address. Required unless proxyId is sent."
                   },
                   "port": {
                     "type": "number",
-                    "description": "The port to dial."
+                    "description": "The port to dial. Required unless proxyId is sent."
                   },
                   "username": {
                     "type": "string",
@@ -2293,11 +2301,7 @@
                     "type": "string",
                     "description": "http or socks5. Defaults to http."
                   }
-                },
-                "required": [
-                  "host",
-                  "port"
-                ]
+                }
               },
               "example": {
                 "host": "1.2.3.4",
@@ -5840,8 +5844,8 @@
     "/v1/schedule/entries/update": {
       "post": {
         "operationId": "argus_update_schedule_entry",
-        "summary": "Change a scheduled workflow's time, steps, colour or enabled state",
-        "description": "Change a scheduled workflow's time, steps, colour or enabled state\n\nChange a scheduled workflow. Every field is optional and anything omitted is left alone -- but `recurrence` and `steps` each replace their whole value rather than merging, so read the entry with argus_list_schedule_entries first and send the complete new version. Switching `enabled` off is the way to pause a schedule without losing it; adding `until` to its recurrence is the way to make it stop on a given day and need nobody to come back for it.\n\nMCP tool: `argus_update_schedule_entry`.\n\nNeeds a key with no folder scope; a folder-scoped key is refused with 403.",
+        "summary": "Change a scheduled entry's time, steps, prompt, colour or enabled state",
+        "description": "Change a scheduled entry's time, steps, prompt, colour or enabled state\n\nChange a scheduled entry. Every field is optional and anything omitted is left alone -- but `recurrence`, `steps`, `prompt` and `skills` each replace their whole value rather than merging, so read the entry with argus_list_schedule_entries first and send the complete new version. An entry's kind is fixed here: `steps` is accepted only on an automations workflow, and `prompt`/`skills` only on an AI task -- crossing them is refused rather than quietly turning one into the other. Switching `enabled` off is the way to pause a schedule without losing it; adding `until` to its recurrence is the way to make it stop on a given day and need nobody to come back for it.\n\nMCP tool: `argus_update_schedule_entry`.\n\nNeeds a key with no folder scope; a folder-scoped key is refused with 403.",
         "tags": [
           "Schedule"
         ],
@@ -5953,7 +5957,18 @@
                       "type": "object",
                       "additionalProperties": true
                     },
-                    "description": "Replaces the whole step list. Omit to leave the steps unchanged."
+                    "description": "Replaces the whole step list. Omit to leave the steps unchanged. Refused on an AI task."
+                  },
+                  "prompt": {
+                    "type": "string",
+                    "description": "For an AI task: replaces the instruction it runs unattended, at most 4000 characters. Refused on an automations workflow."
+                  },
+                  "skills": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "For an AI task: replaces the whole skill list, at most 8 ids. Refused on an automations workflow."
                   },
                   "enabled": {
                     "type": "boolean"
@@ -15719,6 +15734,10 @@
           "y": {
             "type": "number",
             "description": "Viewport y, for content with no element to name."
+          },
+          "doubleClick": {
+            "type": "boolean",
+            "description": "Send two clicks, the way a user opens rather than selects."
           }
         },
         "required": [
@@ -15785,6 +15804,13 @@
           "selector": {
             "type": "string",
             "description": "Focus this element first."
+          },
+          "modifiers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Held while the key goes down: any of Alt, Control, Meta, Shift."
           }
         },
         "required": [
@@ -15957,6 +15983,10 @@
           "url": {
             "type": "string",
             "description": "Where to send the active page."
+          },
+          "waitUntil": {
+            "type": "string",
+            "description": "load (the default) waits for the whole page; domcontentloaded returns as soon as the DOM is ready."
           }
         },
         "required": [
@@ -16050,6 +16080,10 @@
           "png": {
             "type": "boolean",
             "description": "Return a lossless PNG instead of the default JPEG."
+          },
+          "selector": {
+            "type": "string",
+            "description": "Photograph one element instead of the viewport. A CSS selector from argus_page_snapshot."
           }
         },
         "required": [

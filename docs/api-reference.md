@@ -409,7 +409,7 @@ Update a proxy
 
 - MCP tool: `argus_update_proxy`
 
-Change an existing proxy's name, type, host, port, username or password. Only the fields you send are written. Changing the connection details clears the stored check result -- the status you saw before is stale until the next check -- and the password is stored, never returned. To re-test after a change, call argus_check_proxy.
+Change an existing proxy's name, type, host, port, username, password or folder. Only the fields you send are written. Changing the connection details clears the stored check result -- the status you saw before is stale until the next check -- and the password is stored, never returned. To re-test after a change, call argus_check_proxy with the proxyId.
 
 Fields:
 - `proxyId` (string, required) — From argus_list_proxies.
@@ -419,6 +419,7 @@ Fields:
 - `port` (number)
 - `username` (string)
 - `password` (string)
+- `folderId` (string) — Folder to file it in (argus_list_folders). Empty moves it back to All proxies. Filing only.
 
 ```sh
 curl -X POST "http://127.0.0.1:39219/v1/proxies/update" \
@@ -433,11 +434,12 @@ Check reachability and egress IP
 
 - MCP tool: `argus_check_proxy`
 
-Check a proxy's reachability and egress IP.
+Check a proxy's reachability and egress IP. Send proxyId to re-check a saved proxy -- the result is stored on its row, so the Proxies tab agrees with what you saw. Or send host and port (with username, password, type as needed) to probe an ad-hoc proxy without saving anything.
 
 Fields:
-- `host` (string, required) — The proxy's address.
-- `port` (number, required) — The port to dial.
+- `proxyId` (string) — A saved proxy to re-check by id (argus_list_proxies). The result is stored on the row. When sent, the connection fields below are ignored.
+- `host` (string) — The proxy's address. Required unless proxyId is sent.
+- `port` (number) — The port to dial. Required unless proxyId is sent.
 - `username` (string) — Only if the proxy authenticates.
 - `password` (string) — Only if the proxy authenticates.
 - `type` (string) — http or socks5. Defaults to http.
@@ -1059,18 +1061,20 @@ curl -X POST "http://127.0.0.1:39219/v1/schedule/entries/create" \
 
 ### POST /v1/schedule/entries/update
 
-Change a scheduled workflow's time, steps, colour or enabled state
+Change a scheduled entry's time, steps, prompt, colour or enabled state
 
 - MCP tool: `argus_update_schedule_entry`
 - Key scope: needs a key with no folder scope. Automations are shared across every folder and have none of their own, so a folder-scoped key may run them but may not author them.
 
-Change a scheduled workflow. Every field is optional and anything omitted is left alone -- but `recurrence` and `steps` each replace their whole value rather than merging, so read the entry with argus_list_schedule_entries first and send the complete new version. Switching `enabled` off is the way to pause a schedule without losing it; adding `until` to its recurrence is the way to make it stop on a given day and need nobody to come back for it.
+Change a scheduled entry. Every field is optional and anything omitted is left alone -- but `recurrence`, `steps`, `prompt` and `skills` each replace their whole value rather than merging, so read the entry with argus_list_schedule_entries first and send the complete new version. An entry's kind is fixed here: `steps` is accepted only on an automations workflow, and `prompt`/`skills` only on an AI task -- crossing them is refused rather than quietly turning one into the other. Switching `enabled` off is the way to pause a schedule without losing it; adding `until` to its recurrence is the way to make it stop on a given day and need nobody to come back for it.
 
 Fields:
 - `entryId` (string, required)
 - `name` (string)
 - `recurrence` (object) — Replaces the whole recurrence. Same shape as on create.
-- `steps` (objects) — Replaces the whole step list. Omit to leave the steps unchanged.
+- `steps` (objects) — Replaces the whole step list. Omit to leave the steps unchanged. Refused on an AI task.
+- `prompt` (string) — For an AI task: replaces the instruction it runs unattended, at most 4000 characters. Refused on an automations workflow.
+- `skills` (strings) — For an AI task: replaces the whole skill list, at most 8 ids. Refused on an automations workflow.
 - `enabled` (boolean)
 - `color` (string)
 
@@ -2301,6 +2305,7 @@ Fields:
 - `nth` (number) — Which match, when the selector is not unique. Zero-based.
 - `x` (number) — Viewport x, for content with no element to name.
 - `y` (number) — Viewport y, for content with no element to name.
+- `doubleClick` (boolean) — Send two clicks, the way a user opens rather than selects.
 
 ### argus_type (MCP tool)
 
@@ -2326,6 +2331,7 @@ Fields:
 - `profileId` (string, required) — The running profile to press a key in.
 - `key` (string, required) — Enter, Tab, Escape, Backspace, Delete, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Home, End, PageUp, PageDown, or a single character.
 - `selector` (string) — Focus this element first.
+- `modifiers` (strings) — Held while the key goes down: any of Alt, Control, Meta, Shift.
 
 ### argus_scroll (MCP tool)
 
@@ -2395,6 +2401,7 @@ Point a page at a URL and wait for it to settle
 Fields:
 - `profileId` (string, required) — The running profile whose active page to point somewhere.
 - `url` (string, required) — Where to send the active page.
+- `waitUntil` (string) — load (the default) waits for the whole page; domcontentloaded returns as soon as the DOM is ready.
 
 ### argus_go_back (MCP tool)
 
@@ -2436,6 +2443,7 @@ Fields:
 - `profileId` (string, required) — The running profile whose active page to capture.
 - `fullPage` (boolean) — Capture the whole scrollable page rather than the viewport.
 - `png` (boolean) — Return a lossless PNG instead of the default JPEG.
+- `selector` (string) — Photograph one element instead of the viewport. A CSS selector from argus_page_snapshot.
 
 ### argus_eval (MCP tool)
 

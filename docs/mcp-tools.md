@@ -84,7 +84,7 @@ This is a local API. It listens on loopback on the machine running Argus, and no
 | --- | --- | --- |
 | `argus_list_schedule_entries` | `GET /v1/schedule/entries` | Every scheduled workflow in the workspace |
 | `argus_create_schedule_entry` | `POST /v1/schedule/entries/create` | Create a scheduled workflow or AI task |
-| `argus_update_schedule_entry` | `POST /v1/schedule/entries/update` | Change a scheduled workflow's time, steps, colour or enabled state |
+| `argus_update_schedule_entry` | `POST /v1/schedule/entries/update` | Change a scheduled entry's time, steps, prompt, colour or enabled state |
 | `argus_delete_schedule_entry` | `POST /v1/schedule/entries/delete` | Delete a scheduled workflow |
 | `argus_schedule_history` | `POST /v1/schedule/occurrences` | What the calendar actually ran over a range of days |
 | `argus_keep_awake` | `GET /v1/schedule/keep-awake` | Whether this computer is being held awake for the schedule |
